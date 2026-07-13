@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Деньги храним в целых копейках (amountMinor).
+// Знак: положительное значение — доход, отрицательное — расход.
+model Transaction {
+  id          String   @id @default(cuid())
+  occurredAt  DateTime
+  amountMinor Int
+  currency    String   @default("RUB")
+  category    String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@map("transactions")
+}
