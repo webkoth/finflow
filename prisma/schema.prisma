@@ -9,14 +9,16 @@ datasource db {
 
 // Деньги храним в целых копейках (amountMinor).
 // Знак: положительное значение — доход, отрицательное — расход.
+// Int-лимит: одна транзакция до ±21,4 млн руб (32-bit, копейки).
 model Transaction {
   id          String   @id @default(cuid())
-  occurredAt  DateTime
+  occurredAt  DateTime @db.Timestamptz(3)
   amountMinor Int
   currency    String   @default("RUB")
   category    String
   note        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
+  @@index([occurredAt])
   @@map("transactions")
 }
