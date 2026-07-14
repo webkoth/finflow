@@ -2,25 +2,26 @@
 
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/db"
+import { parseMoneyToMinor } from "@/lib/domain/money"
 
-export async function createTransaction(formData: FormData) {
+export type FormState = { error: string | null }
+
+export async function createTransaction(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
   const category = String(formData.get("category") ?? "").trim()
-  const rawAmount = String(formData.get("amount") ?? "").replace(",", ".")
-  const amountRub = Number(rawAmount)
+  const amountMinor = parseMoneyToMinor(String(formData.get("amount") ?? ""))
   const note = String(formData.get("note") ?? "").trim()
 
-  if (!category || !Number.isFinite(amountRub) || amountRub === 0) {
-    throw new Error("Укажите категорию и ненулевую сумму")
-  }
+  if (!category) return { error: "Укажите категорию" }
+  if (amountMinor === null)
+    return { error: "Сумма должна быть ненулевым числом до 21,4 млн ₽" }
 
   await prisma.transaction.create({
-    data: {
-      category,
-      amountMinor: Math.round(amountRub * 100),
-      note: note || null,
-      occurredAt: new Date(),
-    },
+    data: { category, amountMinor, note: note || null, occurredAt: new Date() },
   })
 
   revalidatePath("/transactions")
+  return { error: null }
 }

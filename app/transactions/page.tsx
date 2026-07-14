@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { formatDate } from "@/lib/domain/dates"
 import { formatMoney } from "@/lib/domain/money"
 import { summarizeByCategory } from "@/lib/domain/transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -51,7 +52,7 @@ export default async function TransactionsPage() {
         <TableBody>
           {transactions.map((t) => (
             <TableRow key={t.id}>
-              <TableCell>{t.occurredAt.toLocaleDateString("ru-RU")}</TableCell>
+              <TableCell>{formatDate(t.occurredAt)}</TableCell>
               <TableCell>{t.category}</TableCell>
               <TableCell>{t.note}</TableCell>
               <TableCell className="text-right">
