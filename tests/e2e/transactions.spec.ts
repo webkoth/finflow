@@ -1,0 +1,32 @@
+import { expect, test } from "@playwright/test"
+
+test("страница транзакций открывается и показывает данные", async ({
+  page,
+}) => {
+  await page.goto("/transactions")
+  await expect(page.getByRole("heading", { name: "Транзакции" })).toBeVisible()
+  await expect(page.locator("table tbody tr").first()).toBeVisible()
+})
+
+test("новая транзакция появляется в списке", async ({ page }) => {
+  await page.goto("/transactions")
+  const note = `e2e-${Date.now()}`
+  await page.getByLabel("Категория").fill("Тест")
+  await page.getByLabel("Сумма").fill("123,45")
+  await page.getByLabel("Заметка").fill(note)
+  await page.getByRole("button", { name: "Добавить" }).click()
+  await expect(page.getByText(note)).toBeVisible()
+})
+
+test("невалидная сумма показывает ошибку, страница не падает", async ({
+  page,
+}) => {
+  await page.goto("/transactions")
+  await page.getByLabel("Категория").fill("Тест")
+  await page.getByLabel("Сумма").fill("0")
+  await page.getByRole("button", { name: "Добавить" }).click()
+  await expect(
+    page.getByText("Сумма должна быть ненулевым числом до 21,4 млн ₽")
+  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Транзакции" })).toBeVisible()
+})
