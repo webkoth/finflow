@@ -16,3 +16,11 @@ export function parseMoneyToMinor(input: string): number | null {
   if (minor === 0 || Math.abs(minor) > MAX_AMOUNT_MINOR) return null
   return minor
 }
+
+// Форматирование BigInt-копеек (суммы заявок бывают > Int-лимита).
+// Точность Number достаточна до ~90 трлн ₽.
+export function formatMoneyBig(amountMinor: bigint, currency = "RUB"): string {
+  return new Intl.NumberFormat("ru-RU", { style: "currency", currency }).format(
+    Number(amountMinor) / 100
+  )
+}
