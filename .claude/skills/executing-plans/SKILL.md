@@ -31,10 +31,10 @@ For each task:
 
 ### Step 3: Complete Development
 
-After all tasks complete and verified:
-- Announce: "I'm using the finishing-a-development-branch skill to complete this work."
-- **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
-- Follow that skill to verify tests, present options, execute choice
+When all plan tasks are complete:
+- Run the project checks: `npm run format && npm run lint && npm run typecheck && npm run test`
+- Follow the delivery process from CLAUDE.md — use the /ship command to deliver to the sandbox
+- Do NOT merge branches or create PRs yourself; production releases go through the developer via /request-prod
 
 ## When to Stop and Ask for Help
 
@@ -67,4 +67,5 @@ After all tasks complete and verified:
 **Required workflow skills:**
 - **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:finishing-a-development-branch** - Complete development after all tasks
+
+**Completion:** project checks + /ship to sandbox (see CLAUDE.md); production goes through the developer via /request-prod
