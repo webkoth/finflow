@@ -24,3 +24,28 @@ export function executionDeadline(payDate: Date): Date {
     )
   )
 }
+
+export type ApprovalStatus = "on_approval" | "approved" | "declined"
+
+export type ExecutionStatus =
+  "on_approval" | "declined" | "awaiting" | "executed" | "overdue"
+
+export type ExecutionStatusInput = {
+  approvalStatus: ApprovalStatus
+  payDate: Date
+  hasDebits: boolean
+}
+
+// Исполнена = есть хотя бы одно привязанное списание (частичные оплаты
+// v1 не интерпретирует — открытый вопрос §11 спеки).
+export function computeExecutionStatus(
+  input: ExecutionStatusInput,
+  now: Date
+): ExecutionStatus {
+  if (input.hasDebits) return "executed"
+  if (input.approvalStatus === "declined") return "declined"
+  if (input.approvalStatus === "on_approval") return "on_approval"
+  return now.getTime() >= executionDeadline(input.payDate).getTime()
+    ? "overdue"
+    : "awaiting"
+}
