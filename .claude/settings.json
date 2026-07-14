@@ -29,7 +29,13 @@
       "Bash(gh run watch:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr view:*)",
-      "Bash(ssh ops@161.104.50.20:*)"
+      "Bash(gh auth status)",
+      "Bash(gh api repos/webkoth/finflow:*)",
+      "Bash(gh api user:*)",
+      "Bash(gh repo clone webkoth/finflow:*)",
+      "Bash(node scripts/onboarding-check.mjs)",
+      "Bash(ssh ops@161.104.50.20:*)",
+      "Bash(ssh finflow-ops:*)"
     ]
   }
 }
