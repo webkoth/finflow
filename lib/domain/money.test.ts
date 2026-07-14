@@ -49,14 +49,14 @@ describe("parseMoneyToMinor", () => {
 
 describe("formatMoneyBig", () => {
   it("форматирует BigInt-копейки в рубли по ru-RU", () => {
-    expect(norm(formatMoneyBig(BigInt(123456)))).toBe("1 234,56 ₽")
+    expect(norm(formatMoneyBig(123456n))).toBe("1 234,56 ₽")
   })
 
   it("форматирует суммы больше Int-лимита (25 млн ₽)", () => {
-    expect(norm(formatMoneyBig(BigInt(2_500_000_000)))).toBe("25 000 000,00 ₽")
+    expect(norm(formatMoneyBig(2_500_000_000n))).toBe("25 000 000,00 ₽")
   })
 
   it("форматирует другие валюты по коду ISO", () => {
-    expect(norm(formatMoneyBig(BigInt(500000), "CNY"))).toBe("5 000,00 CN¥")
+    expect(norm(formatMoneyBig(500000n, "CNY"))).toBe("5 000,00 CN¥")
   })
 })
