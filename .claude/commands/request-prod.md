@@ -1,5 +1,5 @@
 ---
-description: Создать PR sandbox → main на ревью разработчику (релиз в production)
+description: Создать PR develop → main на ревью разработчику (релиз в production)
 ---
 
 Команда пока не активна: GitHub-контур ещё не настроен. Сообщи пользователю:

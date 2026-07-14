@@ -33,7 +33,7 @@ For each task:
 
 When all plan tasks are complete:
 - Run the project checks: `npm run format && npm run lint && npm run typecheck && npm run test`
-- Follow the delivery process from CLAUDE.md — use the /ship command to deliver to the sandbox
+- Follow the delivery process from CLAUDE.md — use the /ship command to deliver to the dev environment
 - Do NOT merge branches or create PRs yourself; production releases go through the developer via /request-prod
 
 ## When to Stop and Ask for Help
@@ -67,4 +67,4 @@ When all plan tasks are complete:
 **Required workflow skills:**
 - **writing-plans** - Creates the plan this skill executes
 
-**Completion:** project checks + /ship to sandbox (see CLAUDE.md); production goes through the developer via /request-prod
+**Completion:** project checks + /ship to dev (see CLAUDE.md); production goes through the developer via /request-prod
