@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run test)",
+      "Bash(npm run test:*)",
+      "Bash(npm run format)",
+      "Bash(npm run build)",
+      "Bash(npm run dev:*)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(npx prisma db seed)",
+      "Bash(npx shadcn add:*)",
+      "Bash(npx playwright test:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git switch:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
