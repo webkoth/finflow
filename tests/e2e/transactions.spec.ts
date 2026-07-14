@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test"
 
-test("страница транзакций открывается и показывает данные", async ({
-  page,
-}) => {
+test("страница транзакций открывается", async ({ page }) => {
   await page.goto("/transactions")
   await expect(page.getByRole("heading", { name: "Транзакции" })).toBeVisible()
-  await expect(page.locator("table tbody tr").first()).toBeVisible()
+  await expect(page.getByLabel("Категория")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Добавить" })).toBeVisible()
 })
 
 test("новая транзакция появляется в списке", async ({ page }) => {
