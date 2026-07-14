@@ -7,8 +7,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   use: { baseURL: "http://localhost:3000" },
   webServer: {
-    command: "npm run dev",
+    // В CI гоняем против production-сборки, локально — против dev-сервера
+    command: process.env.CI ? "npm run build && npm run start" : "npm run dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
+    timeout: 180_000,
   },
 })
