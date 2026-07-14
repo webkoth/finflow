@@ -1,21 +1,32 @@
-# Next.js template
+# finflow
 
-This is a Next.js template with shadcn/ui.
+Внутреннее финансовое приложение. Разрабатывается доменными специалистами
+через Claude Code по правилам из `CLAUDE.md`.
 
-## Adding components
+## Документы
 
-To add components to your app, run the following command:
+- Правила работы: `CLAUDE.md`
+- Спецификация окружения: `docs/superpowers/specs/2026-07-13-team-environment-design.md`
+- Планы внедрения: `docs/superpowers/plans/`
+
+## Быстрый старт (разработчик)
 
 ```bash
-npx shadcn@latest add button
+nvm use                          # Node 26
+npm install
+createdb finflow_dev             # локальный PostgreSQL
+cp .env.example .env             # и подставь своего пользователя ОС в DATABASE_URL
+npx prisma migrate dev
+npx prisma db seed
+npm run dev                      # http://localhost:3000
 ```
 
-This will place the ui components in the `components` directory.
+## Проверки
 
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
+```bash
+npm run lint && npm run typecheck && npm run test   # быстрые
+npm run test:e2e                                    # e2e-смоук (Playwright)
 ```
+
+Специалисты настраивают машину командой `/onboarding` в Claude Code
+(активируется после внедрения этапа 5 спецификации).
