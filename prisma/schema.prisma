@@ -22,3 +22,115 @@ model Transaction {
   @@index([occurredAt])
   @@map("transactions")
 }
+
+// --- Модуль «Заявки на оплату» (спека 2026-07-14-payment-requests-design) ---
+
+enum ApprovalStatus {
+  on_approval
+  approved
+  declined
+}
+
+enum ExecutionStatus {
+  on_approval
+  declined
+  awaiting
+  executed
+  overdue
+}
+
+enum SyncRunStatus {
+  running
+  ok
+  error
+}
+
+enum SyncTrigger {
+  cron
+  manual
+  seed
+}
+
+// Снапшот заявки на расход ДС из DWH. Суммы — BigInt-копейки:
+// Int ограничен ±21,4 млн ₽, заявки за товар бывают больше.
+model PaymentRequest {
+  id              String          @id @default(cuid())
+  uid             String          @unique // UID документа 1С
+  number          String
+  date            DateTime        @db.Timestamptz(3)
+  orgName         String
+  orgInn          String?
+  orgUid          String?
+  initiator       String?
+  department      String?
+  amountMinor     BigInt
+  currency        String          @default("RUB")
+  cashFlowItem    String? // статья ДДС
+  fund            String?
+  partnerName     String?
+  partnerInn      String?
+  partnerUid      String?
+  payDate         DateTime        @db.Timestamptz(3) // плановая дата оплаты
+  approvalStatus  ApprovalStatus
+  importance      Int             @default(0) // 1 = срочная
+  comment         String?
+  executionStatus ExecutionStatus
+  executedAt      DateTime?       @db.Timestamptz(3)
+  isDeletedIn1c   Boolean         @default(false)
+  syncedAt        DateTime        @db.Timestamptz(3)
+
+  debits            Debit[]
+  executionComments ExecutionComment[]
+
+  @@index([executionStatus])
+  @@index([payDate])
+  @@map("payment_requests")
+}
+
+// Списание из выписки банка (документ «Расход ДС» 1С), привязан к заявке.
+model Debit {
+  id          String   @id @default(cuid())
+  docUid      String   @unique // UID документа «Расход ДС»
+  date        DateTime @db.Timestamptz(3)
+  amountMinor BigInt
+  bankAccount String?
+  bankName    String?
+  requestUid  String
+  syncedAt    DateTime @db.Timestamptz(3)
+
+  request PaymentRequest @relation(fields: [requestUid], references: [uid])
+
+  @@index([requestUid])
+  @@map("debits")
+}
+
+// Объяснение бухгалтера к красной заявке. Живёт только в приложении.
+model ExecutionComment {
+  id        String   @id @default(cuid())
+  requestId String
+  text      String
+  author    String // строка до появления авторизации
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  request PaymentRequest @relation(fields: [requestId], references: [id])
+
+  @@index([requestId])
+  @@map("execution_comments")
+}
+
+// Журнал запусков синка — питает индикатор свежести данных и диагностику.
+model SyncRun {
+  id                    String        @id @default(cuid())
+  startedAt             DateTime      @default(now()) @db.Timestamptz(3)
+  finishedAt            DateTime?     @db.Timestamptz(3)
+  status                SyncRunStatus
+  trigger               SyncTrigger
+  requestsUpserted      Int           @default(0)
+  debitsUpserted        Int           @default(0)
+  debitsSkipped         Int           @default(0)
+  requestsMarkedDeleted Int           @default(0)
+  error                 String?
+
+  @@index([status, startedAt])
+  @@map("sync_runs")
+}
