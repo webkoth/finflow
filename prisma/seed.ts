@@ -75,6 +75,9 @@ async function main() {
   // Демо-заявки — через реальный конвейер синка (fixture-шлюз).
   const sync = await runSync(fixtureDwhGateway, "seed")
   console.log(`Seed: синк заявок — ${JSON.stringify(sync)}`)
+  if (sync.skipped || sync.status !== "ok") {
+    throw new Error(`Seed: синк заявок не удался — ${JSON.stringify(sync)}`)
+  }
 }
 
 main()

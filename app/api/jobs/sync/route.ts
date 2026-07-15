@@ -10,5 +10,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   }
   const result = await runSync(getDwhGateway(), "cron")
-  return NextResponse.json(result)
+  const status = !result.skipped && result.status === "error" ? 500 : 200
+  return NextResponse.json(result, { status })
 }
