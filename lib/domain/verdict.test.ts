@@ -118,6 +118,22 @@ describe("computeVerdict: сборка", () => {
     expect(check(makeInput(), "finplan").status).toBe("info")
     expect(check(makeInput(), "preapproved").status).toBe("info")
   })
+
+  it("описание ok-вердикта", () => {
+    expect(computeVerdict(makeInput(), SETTINGS).description).toBe(
+      "Все ключевые проверки пройдены"
+    )
+  })
+
+  it("выключенная проваленная проверка не попадает в описание", () => {
+    const settings: VerdictSettings = {
+      ...SETTINGS,
+      include: { ...SETTINGS.include, document: false },
+    }
+    const v = computeVerdict(makeInput({ attachmentsCount: 0 }), settings)
+    expect(v.level).toBe("ok")
+    expect(v.description).toBe("Все ключевые проверки пройдены")
+  })
 })
 
 describe("проверка «Документ-основание»", () => {

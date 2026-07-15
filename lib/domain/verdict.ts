@@ -212,10 +212,12 @@ function checkPreapproved(): VerdictCheck {
 
 function describeVerdict(
   level: Exclude<VerdictLevel, "block">,
-  checks: VerdictCheck[]
+  checks: VerdictCheck[],
+  include: Record<CheckId, boolean>
 ): string {
-  const bad = checks.filter((c) => c.status === "bad")
-  const warn = checks.filter((c) => c.status === "warn")
+  const relevant = checks.filter((c) => include[c.id])
+  const bad = relevant.filter((c) => c.status === "bad")
+  const warn = relevant.filter((c) => c.status === "warn")
   if (level === "ok") return "Все ключевые проверки пройдены"
   if (level === "warn")
     return warn.length === 1
@@ -248,7 +250,7 @@ export function computeVerdict(
   return {
     level,
     title: TITLES[level],
-    description: describeVerdict(level, checks),
+    description: describeVerdict(level, checks, settings.include),
     checks,
   }
 }
