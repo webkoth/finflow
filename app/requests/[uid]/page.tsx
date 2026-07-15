@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { STATUS_CLASSES, STATUS_LABELS } from "../status"
+import { CommentForm } from "./comment-form"
 
 export const dynamic = "force-dynamic"
 
@@ -160,6 +161,29 @@ export default async function RequestPage({
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Комментарии бухгалтера</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {request.executionComments.length === 0 && (
+            <p className="text-sm text-muted-foreground">Комментариев нет.</p>
+          )}
+          <ul className="space-y-3">
+            {request.executionComments.map((c) => (
+              <li key={c.id} className="text-sm">
+                <span className="font-medium">{c.author}</span>{" "}
+                <span className="text-muted-foreground">
+                  {formatDate(c.createdAt)}
+                </span>
+                <p>{c.text}</p>
+              </li>
+            ))}
+          </ul>
+          <CommentForm uid={request.uid} />
         </CardContent>
       </Card>
     </main>

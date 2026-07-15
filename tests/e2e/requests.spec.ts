@@ -31,3 +31,15 @@ test("карточка: несуществующий uid отдаёт 404", asyn
   const response = await page.goto("/requests/no-such-uid")
   expect(response?.status()).toBe(404)
 })
+
+test("комментарий бухгалтера сохраняется и виден на карточке", async ({
+  page,
+}) => {
+  await syncFixtureData(page)
+  await page.getByRole("link", { name: "REQ-0002" }).click()
+  const text = `Ждём деньги от маркетплейса, оплатим позже — e2e-${Date.now()}`
+  await page.getByLabel("Автор").fill("Бухгалтер Е2Е")
+  await page.getByLabel("Комментарий").fill(text)
+  await page.getByRole("button", { name: "Добавить комментарий" }).click()
+  await expect(page.getByText(text)).toBeVisible()
+})
