@@ -76,8 +76,10 @@
   buyout_qty | orders_qty`), `accountId Int` (1 = ТОРИ, 2 = Бобровская),
   `date @db.Date`, `value Decimal(18,2)`, `syncedAt`.
   `@@unique([metric, accountId, date])`.
-- **`IuPlanWeek`** — `weekCode Int` (ГГНН), `metric`, `value Decimal(18,2)`,
-  `uploadId` (FK). Строки активной (последней) загрузки.
+- **`IuPlanDay`** — план **дневной** (уточнено по факту: лист «2026 ПЛАН» —
+  строки по датам): `date @db.Date @unique`, `planBuyout`, `planWb`,
+  `planOrders`, `planAdv` (Decimal), `uploadId` (FK). Строки активной
+  (последней) загрузки; недельная таблица отчёта агрегируется из дней.
 - **`IuPlanUpload`** — `fileName`, `rowsParsed`, `uploadedById` (FK User) +
   снапшот имени, `createdAt`.
 - **`IuReportSetting`** — `key @unique`, `value Decimal(18,2)`,
