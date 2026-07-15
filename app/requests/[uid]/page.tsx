@@ -57,6 +57,12 @@ export default async function RequestPage({
         )}
       </div>
 
+      {request.isDeletedIn1c && (
+        <p className="text-sm text-destructive">
+          Заявка удалена в 1С — данные могли устареть.
+        </p>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Реквизиты</CardTitle>
@@ -114,10 +120,17 @@ export default async function RequestPage({
           {request.executionStatus === "executed" && request.executedAt ? (
             <p>Исполнена: списание {formatDate(request.executedAt)}.</p>
           ) : request.approvalStatus === "approved" ? (
-            <p>
-              Ожидалось списание до {formatDate(deadline)} 11:00 МСК.
-              {request.executionStatus === "overdue" &&
-                " Списания нет — заявка просрочена."}
+            request.executionStatus === "overdue" ? (
+              <p>
+                Ожидалось списание до {formatDate(deadline)} 11:00 МСК. Списания
+                нет — заявка просрочена.
+              </p>
+            ) : (
+              <p>Ожидается списание до {formatDate(deadline)} 11:00 МСК.</p>
+            )
+          ) : request.executionStatus === "declined" ? (
+            <p className="text-muted-foreground">
+              Заявка отклонена — исполнение не контролируется.
             </p>
           ) : (
             <p className="text-muted-foreground">
