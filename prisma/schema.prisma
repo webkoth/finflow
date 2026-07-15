@@ -74,6 +74,11 @@ model PaymentRequest {
   approvalStatus  ApprovalStatus
   importance      Int             @default(0) // 1 = срочная
   comment         String?
+  // Светофор (план 6): счёт списания, договор, заказ, руководитель отдела.
+  debitAccountUid String?
+  contractUid     String?
+  orderUid        String?
+  initiatorHead   String?
   executionStatus ExecutionStatus
   executedAt      DateTime?       @db.Timestamptz(3)
   isDeletedIn1c   Boolean         @default(false)
@@ -130,7 +135,128 @@ model SyncRun {
   debitsSkipped         Int           @default(0)
   requestsMarkedDeleted Int           @default(0)
   error                 String?
+  slices                Json? // отчёт синка срезов светофора: { balances: {upserted}|{error}, ... }
 
   @@index([status, startedAt])
   @@map("sync_runs")
+}
+
+// --- Светофор авто-проверок (спека 2026-07-14-verdict-traffic-light-design) ---
+// Срезы данных: наполняет синк через per-slice гейтвеи, читают экраны.
+// Пустая таблица = срез недоступен → проверки по нему серые «нет данных».
+
+model AccountBalance {
+  id           String   @id @default(cuid())
+  accountUid   String   @unique // UID банковского счёта 1С
+  orgUid       String?
+  orgName      String
+  accountName  String
+  bankName     String?
+  currency     String
+  balanceMinor BigInt
+  syncedAt     DateTime @db.Timestamptz(3)
+
+  @@index([orgName])
+  @@map("account_balances")
+}
+
+model CurrencyRate {
+  id           String   @id @default(cuid())
+  currencyCode String   @unique // ISO-код: "USD", "CNY"
+  rate         Decimal  @db.Decimal(18, 6) // ₽ за единицу валюты
+  rateDate     DateTime @db.Timestamptz(3)
+  syncedAt     DateTime @db.Timestamptz(3)
+
+  @@map("currency_rates")
+}
+
+model FundSnapshot {
+  id            String   @id @default(cuid())
+  fundUid       String   @unique
+  name          String   @unique // заявка ссылается на фонд по имени (PaymentRequest.fund)
+  planWeekMinor BigInt
+  factWeekMinor BigInt
+  balanceMinor  BigInt
+  syncedAt      DateTime @db.Timestamptz(3)
+
+  @@map("fund_snapshots")
+}
+
+model PartnerStats {
+  id               String    @id @default(cuid())
+  partnerUid       String    @unique
+  firstOperationAt DateTime? @db.Timestamptz(3)
+  lastPaymentAt    DateTime? @db.Timestamptz(3)
+  paymentCount     Int
+  totalPaidMinor   BigInt
+  receivableMinor  BigInt // дебиторка (наш аванс контрагенту)
+  payableMinor     BigInt // кредиторка (наш долг)
+  recentPayments   Json // последние 3–5: [{ date, basis, amountMinor: string }]
+  chatUrl          String?
+  syncedAt         DateTime  @db.Timestamptz(3)
+
+  @@map("partner_stats")
+}
+
+model PartnerContract {
+  id          String   @id @default(cuid())
+  contractUid String   @unique
+  partnerUid  String
+  number      String
+  date        DateTime @db.Timestamptz(3)
+  isActive    Boolean
+  amountMinor BigInt
+  paidMinor   BigInt
+  debtMinor   BigInt // задолженность по договору (ТЗ §10.1)
+  currency    String
+  syncedAt    DateTime @db.Timestamptz(3)
+
+  @@index([partnerUid])
+  @@map("partner_contracts")
+}
+
+model SupplierOrder {
+  id          String   @id @default(cuid())
+  orderUid    String   @unique
+  partnerUid  String
+  contractUid String?
+  number      String
+  date        DateTime @db.Timestamptz(3)
+  amountMinor BigInt
+  paidMinor   BigInt // оплачено ранее по заказу
+  currency    String
+  syncedAt    DateTime @db.Timestamptz(3)
+
+  @@index([partnerUid])
+  @@map("supplier_orders")
+}
+
+model AttachmentMeta {
+  id         String   @id @default(cuid())
+  requestUid String
+  fileName   String
+  fileType   String? // «инвойс», «спецификация», «счёт»
+  createdAt  DateTime @db.Timestamptz(3)
+  syncedAt   DateTime @db.Timestamptz(3)
+
+  @@unique([requestUid, fileName])
+  @@map("attachment_meta")
+}
+
+// Настройки светофора: редактируются на app/settings/verdict.
+// Отсутствующая строка = дефолт из lib/domain/verdict.ts.
+model VerdictThreshold {
+  id    String  @id @default(cuid())
+  key   String  @unique // fundDeficitPercent | oldPartnerMonths | minOperationsForConstant
+  value Decimal @db.Decimal(18, 6)
+
+  @@map("verdict_thresholds")
+}
+
+model VerdictCheckSetting {
+  id               String  @id @default(cuid())
+  checkId          String  @unique // funds | fund_balance | finplan | document | order_contract | partner | preapproved
+  includeInVerdict Boolean
+
+  @@map("verdict_check_settings")
 }
