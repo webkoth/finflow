@@ -16,6 +16,14 @@ export default function Page() {
             Транзакции
           </Link>
         </div>
+        <div>
+          <Link
+            href="/requests"
+            className="text-primary underline underline-offset-4"
+          >
+            Заявки на оплату
+          </Link>
+        </div>
       </div>
     </div>
   )
