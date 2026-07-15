@@ -79,7 +79,10 @@ export async function declineRequest(
   const reason = String(formData.get("reason") ?? "").trim()
   if (!reason) return { error: "Укажите причину отклонения" }
 
-  const request = await prisma.paymentRequest.findUnique({ where: { uid } })
+  const request = await prisma.paymentRequest.findUnique({
+    where: { uid },
+    include: { _count: { select: { debits: true } } },
+  })
   if (!request) return { error: "Заявка не найдена" }
   if (request.approvalStatus !== "on_approval")
     return { error: "Заявка уже обработана" }
@@ -89,7 +92,17 @@ export async function declineRequest(
 
   await prisma.paymentRequest.update({
     where: { uid },
-    data: { approvalStatus: "declined", executionStatus: "declined" },
+    data: {
+      approvalStatus: "declined",
+      executionStatus: computeExecutionStatus(
+        {
+          approvalStatus: "declined",
+          payDate: request.payDate,
+          hasDebits: request._count.debits > 0,
+        },
+        new Date()
+      ),
+    },
   })
 
   revalidatePath(`/requests/${uid}`)

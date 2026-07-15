@@ -61,3 +61,14 @@ test("отклонение без причины показывает ошибк
   await page.getByRole("button", { name: "Отклонить" }).click()
   await expect(page.getByText("Укажите причину отклонения")).toBeVisible()
 })
+
+test("отклонение заявки с причиной меняет статус (mock 1С)", async ({
+  page,
+}) => {
+  await syncFixtureData(page)
+  await page.getByRole("link", { name: "REQ-0006" }).click()
+  await page.getByLabel("Причина отклонения").fill("Дубликат заявки — e2e")
+  await page.getByRole("button", { name: "Отклонить" }).click()
+  await expect(page.getByText("Отклонена", { exact: true })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Отклонить" })).toHaveCount(0)
+})
