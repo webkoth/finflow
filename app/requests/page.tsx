@@ -35,6 +35,11 @@ function param(sp: Search, key: string): string {
   return typeof v === "string" ? v : ""
 }
 
+// Битые параметры URL (сохранённые ссылки) молча игнорируем, а не роняем страницу.
+function validDate(value: string): string {
+  return Number.isNaN(new Date(value).getTime()) ? "" : value
+}
+
 function buildQuery(sp: Search, overrides: Record<string, string>): string {
   const q = new URLSearchParams()
   for (const key of ["status", "org", "fund", "from", "to"]) {
@@ -51,11 +56,12 @@ export default async function RequestsPage({
   searchParams: Promise<Search>
 }) {
   const sp = await searchParams
-  const status = param(sp, "status")
+  const rawStatus = param(sp, "status")
+  const status = Object.hasOwn(STATUS_LABELS, rawStatus) ? rawStatus : ""
   const org = param(sp, "org")
   const fund = param(sp, "fund")
-  const from = param(sp, "from")
-  const to = param(sp, "to")
+  const from = validDate(param(sp, "from"))
+  const to = validDate(param(sp, "to"))
 
   const where: Prisma.PaymentRequestWhereInput = {
     isDeletedIn1c: false,
@@ -64,8 +70,9 @@ export default async function RequestsPage({
     ...(fund ? { fund } : {}),
     ...(from || to
       ? {
+          // Обе границы диапазона — по московской полуночи.
           payDate: {
-            ...(from ? { gte: new Date(from) } : {}),
+            ...(from ? { gte: new Date(`${from}T00:00:00+03:00`) } : {}),
             ...(to ? { lte: new Date(`${to}T23:59:59+03:00`) } : {}),
           },
         }
