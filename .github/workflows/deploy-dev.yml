@@ -22,6 +22,9 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finflow_test
+      # E2e модуля заявок: демо-DWH и 1С без сети (см. .env.example)
+      DWH_MODE: fixture
+      ONEC_API_MODE: mock
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
