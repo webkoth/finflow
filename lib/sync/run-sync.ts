@@ -32,9 +32,9 @@ export async function runSync(
   })
 
   try {
-    const windowDays = Number(
-      process.env.DWH_SYNC_WINDOW_DAYS ?? DEFAULT_WINDOW_DAYS
-    )
+    const parsed = Number(process.env.DWH_SYNC_WINDOW_DAYS)
+    const windowDays =
+      Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_WINDOW_DAYS
     const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000)
     const [requests, debits] = await Promise.all([
       gateway.fetchRequests(since),
@@ -78,15 +78,21 @@ export async function runSync(
     }
 
     // Заявки из окна, пропавшие из выгрузки, помечаем удалёнными в 1С.
-    const fetchedUids = requests.map((r) => r.uid)
-    const marked = await prisma.paymentRequest.updateMany({
-      where: {
-        date: { gte: since },
-        uid: { notIn: fetchedUids },
-        isDeletedIn1c: false,
-      },
-      data: { isDeletedIn1c: true, syncedAt },
-    })
+    // Пустая выгрузка — подозрение на сбой DWH: ничего не помечаем
+    // (Prisma { notIn: [] } матчит все строки — пометился бы весь реестр).
+    let requestsMarkedDeleted = 0
+    if (requests.length > 0) {
+      const fetchedUids = requests.map((r) => r.uid)
+      const marked = await prisma.paymentRequest.updateMany({
+        where: {
+          date: { gte: since },
+          uid: { notIn: fetchedUids },
+          isDeletedIn1c: false,
+        },
+        data: { isDeletedIn1c: true, syncedAt },
+      })
+      requestsMarkedDeleted = marked.count
+    }
 
     // Списания: пропускаем сироты (заявка вне окна или ещё не приехала).
     const knownUids = new Set(
@@ -156,7 +162,7 @@ export async function runSync(
         requestsUpserted: requests.length,
         debitsUpserted,
         debitsSkipped,
-        requestsMarkedDeleted: marked.count,
+        requestsMarkedDeleted,
       },
     })
     return { skipped: false, runId: run.id, status: "ok" }
