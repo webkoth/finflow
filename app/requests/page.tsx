@@ -37,6 +37,9 @@ function param(sp: Search, key: string): string {
 
 // Битые параметры URL (сохранённые ссылки) молча игнорируем, а не роняем страницу.
 function validDate(value: string): string {
+  // Строго YYYY-MM-DD: where-условия композируют `${value}T00:00:00+03:00`,
+  // и парсабельная, но не-ISO строка дала бы там Invalid Date.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
   return Number.isNaN(new Date(value).getTime()) ? "" : value
 }
 
