@@ -3,6 +3,8 @@
 // fin/composables/useVerdict.ts с исправлениями по спеке).
 // null-срез = «данных нет» → проверка info, из вердикта исключается.
 
+import { formatMoneyBig } from "./money"
+
 export type VerdictLevel = "ok" | "warn" | "bad" | "block" // block зарезервирован, автоматически не выставляется
 export type CheckStatus = "ok" | "warn" | "bad" | "info"
 export type CheckId =
@@ -150,17 +152,95 @@ function noData(id: CheckId, sublabel = "нет данных"): VerdictCheck {
 }
 
 function checkFunds(input: VerdictInput): VerdictCheck {
-  void input
-  return noData("funds") // Task 3
+  const { request, balances, rates } = input
+  if (!balances || balances.length === 0 || !rates) return noData("funds")
+
+  const amountRub = toRub(request.amountMinor, request.currency, rates)
+  if (amountRub === null)
+    return noData("funds", `нет курса валюты ${request.currency}`)
+
+  const account = request.debitAccountUid
+    ? (balances.find((b) => b.accountUid === request.debitAccountUid) ?? null)
+    : null
+  if (
+    account &&
+    account.currency === request.currency &&
+    account.balanceMinor >= request.amountMinor
+  )
+    return {
+      id: "funds",
+      label: "Денег на счёте достаточно",
+      status: "ok",
+      sublabel: formatMoneyBig(account.balanceMinor, account.currency),
+    }
+
+  // Счёт не покрывает (или не указан) — смотрим все счета юрлица в ₽.
+  let orgTotalRub = 0
+  for (const b of balances) {
+    if (b.orgName !== request.orgName) continue
+    const rub = toRub(b.balanceMinor, b.currency, rates)
+    if (rub !== null) orgTotalRub += rub
+  }
+  if (orgTotalRub >= amountRub) {
+    if (!account)
+      return {
+        id: "funds",
+        label: "Счёт списания не указан",
+        status: "warn",
+        sublabel: `по юрлицу достаточно (${Math.round(orgTotalRub).toLocaleString("ru-RU")} ₽)`,
+      }
+    return {
+      id: "funds",
+      label: "Нужен перевод между счетами",
+      status: "warn",
+      sublabel: `на счёте ${formatMoneyBig(account.balanceMinor, account.currency)}, по юрлицу ${Math.round(orgTotalRub).toLocaleString("ru-RU")} ₽`,
+    }
+  }
+  return {
+    id: "funds",
+    label: "Недостаточно средств",
+    status: "bad",
+    sublabel: `нужно ${formatMoneyBig(request.amountMinor, request.currency)}, по юрлицу ${Math.round(orgTotalRub).toLocaleString("ru-RU")} ₽`,
+  }
 }
 
 function checkFundBalance(
   input: VerdictInput,
   thresholds: VerdictThresholds
 ): VerdictCheck {
-  void input
-  void thresholds
-  return noData("fund_balance") // Task 3
+  const { fund, rates, request } = input
+  if (!fund || !rates) return noData("fund_balance")
+  const amountRub = toRub(request.amountMinor, request.currency, rates)
+  if (amountRub === null)
+    return noData("fund_balance", `нет курса валюты ${request.currency}`)
+
+  // Ключевое отличие от старого кода: остаток считаем ПОСЛЕ платежа (ТЗ §4).
+  const afterRub = Number(fund.balanceMinor) / 100 - amountRub
+  const afterText = `${Math.round(afterRub).toLocaleString("ru-RU")} ₽ после платежа`
+  if (afterRub >= 0)
+    return {
+      id: "fund_balance",
+      label: "Фонд в плюсе",
+      status: "ok",
+      sublabel: afterText,
+    }
+
+  const planWeekRub = Number(fund.planWeekMinor) / 100
+  const deficitPercent =
+    planWeekRub > 0 ? (Math.abs(afterRub) / planWeekRub) * 100 : 100
+  if (deficitPercent <= thresholds.fundDeficitPercent)
+    return {
+      id: "fund_balance",
+      label: "Фонд уходит в минус",
+      status: "warn",
+      sublabel: `${afterText} (${deficitPercent.toFixed(0)}% от плана недели)`,
+    }
+  return {
+    id: "fund_balance",
+    label: "Фонд критично в минусе",
+    status: "bad",
+    sublabel: `${afterText} (${deficitPercent.toFixed(0)}% от плана недели)`,
+  }
 }
 
 function checkDocument(input: VerdictInput): VerdictCheck {

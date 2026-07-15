@@ -134,6 +134,29 @@ describe("computeVerdict: сборка", () => {
     expect(v.level).toBe("ok")
     expect(v.description).toBe("Все ключевые проверки пройдены")
   })
+
+  it("описание bad-вердикта не упоминает выключенную проваленную проверку", () => {
+    // funds bad (не хватает по юрлицу) + document bad (нет основания), document выключен
+    const settings: VerdictSettings = {
+      ...SETTINGS,
+      include: { ...SETTINGS.include, document: false },
+    }
+    const input = makeInput({
+      attachmentsCount: 0,
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Сбербанк ₽",
+          currency: "RUB",
+          balanceMinor: 10_000_00n,
+        },
+      ],
+    })
+    const v = computeVerdict(input, settings)
+    expect(v.level).toBe("bad")
+    expect(v.description).not.toContain("Нет основания")
+  })
 })
 
 describe("проверка «Документ-основание»", () => {
@@ -159,5 +182,140 @@ describe("проверка «Документ-основание»", () => {
     expect(
       check(makeInput({ attachmentsCount: null }), "document").status
     ).toBe("info")
+  })
+})
+
+describe("проверка «Деньги на счёте»", () => {
+  it("остаток счёта списания ≥ суммы → ok", () => {
+    expect(check(makeInput(), "funds").status).toBe("ok")
+  })
+
+  it("на счёте не хватает, по юрлицу хватает → warn «нужен перевод»", () => {
+    const input = makeInput({
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Сбербанк ₽",
+          currency: "RUB",
+          balanceMinor: 10_000_00n,
+        },
+        {
+          accountUid: "acc-2",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "ВТБ $",
+          currency: "USD",
+          balanceMinor: 5_000_00n, // 5 000 $ × 76 = 380 000 ₽
+        },
+      ],
+    })
+    const c = check(input, "funds")
+    expect(c.status).toBe("warn")
+    expect(c.label).toBe("Нужен перевод между счетами")
+  })
+
+  it("не хватает по юрлицу целиком → bad", () => {
+    const input = makeInput({
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Сбербанк ₽",
+          currency: "RUB",
+          balanceMinor: 10_000_00n,
+        },
+      ],
+    })
+    expect(check(input, "funds").status).toBe("bad")
+  })
+
+  it("счета другого юрлица не учитываются", () => {
+    const input = makeInput({
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Сбербанк ₽",
+          currency: "RUB",
+          balanceMinor: 10_000_00n,
+        },
+        {
+          accountUid: "acc-9",
+          orgName: "РУСБУБОН",
+          accountName: "Альфа ₽",
+          currency: "RUB",
+          balanceMinor: 100_000_000_00n,
+        },
+      ],
+    })
+    expect(check(input, "funds").status).toBe("bad")
+  })
+
+  it("счёт списания не указан, по юрлицу хватает → warn", () => {
+    const input = makeInput()
+    input.request.debitAccountUid = null
+    const c = check(input, "funds")
+    expect(c.status).toBe("warn")
+    expect(c.label).toBe("Счёт списания не указан")
+  })
+
+  it("срез остатков пуст → info", () => {
+    expect(check(makeInput({ balances: null }), "funds").status).toBe("info")
+    expect(check(makeInput({ balances: [] }), "funds").status).toBe("info")
+  })
+
+  it("нет курса валюты заявки → info", () => {
+    const input = makeInput({ rates: {} })
+    input.request.currency = "CNY"
+    expect(check(input, "funds").status).toBe("info")
+  })
+})
+
+describe("проверка «Остаток фонда» (после платежа)", () => {
+  const fund = {
+    name: "Закупки товара",
+    planWeekMinor: 500_000_00n,
+    factWeekMinor: 100_000_00n,
+    balanceMinor: 400_000_00n,
+  }
+
+  it("остаток после платежа ровно 0 → ok", () => {
+    const input = makeInput({ fund: { ...fund, balanceMinor: 100_000_00n } })
+    expect(check(input, "fund_balance").status).toBe("ok") // 100k − 100k = 0
+  })
+
+  it("после платежа минус ровно 20% плана недели → warn (граница)", () => {
+    // 100k − 200k = −100k; план 500k → 20%
+    const input = makeInput({ fund: { ...fund, balanceMinor: 100_000_00n } })
+    input.request.amountMinor = 200_000_00n
+    const c = check(input, "fund_balance")
+    expect(c.status).toBe("warn")
+  })
+
+  it("минус глубже 20% → bad", () => {
+    // 100k − 201k = −101k; план 500k → 20,2%
+    const input = makeInput({ fund: { ...fund, balanceMinor: 100_000_00n } })
+    input.request.amountMinor = 201_000_00n
+    expect(check(input, "fund_balance").status).toBe("bad")
+  })
+
+  it("план недели 0 и фонд в минусе → bad", () => {
+    const input = makeInput({
+      fund: { ...fund, planWeekMinor: 0n, balanceMinor: 0n },
+    })
+    input.request.amountMinor = 1_00n
+    expect(check(input, "fund_balance").status).toBe("bad")
+  })
+
+  it("валютная заявка пересчитывается в ₽ по курсу", () => {
+    // 10 000 CNY × 11,5 = 115 000 ₽ > остатка 100 000 ₽ → минус 15 000 ₽ = 3% плана → warn
+    const input = makeInput({ fund: { ...fund, balanceMinor: 100_000_00n } })
+    input.request.currency = "CNY"
+    input.request.amountMinor = 10_000_00n
+    expect(check(input, "fund_balance").status).toBe("warn")
+  })
+
+  it("фонда нет в срезе → info", () => {
+    expect(check(makeInput({ fund: null }), "fund_balance").status).toBe("info")
   })
 })
