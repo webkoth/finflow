@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client"
+import { fixtureDwhGateway } from "../lib/integrations/dwh-fixture"
+import { runSync } from "../lib/sync/run-sync"
 
 const prisma = new PrismaClient()
 
@@ -69,6 +71,10 @@ async function main() {
   })
   const count = await prisma.transaction.count()
   console.log(`Seed: создано ${count} транзакций`)
+
+  // Демо-заявки — через реальный конвейер синка (fixture-шлюз).
+  const sync = await runSync(fixtureDwhGateway, "seed")
+  console.log(`Seed: синк заявок — ${JSON.stringify(sync)}`)
 }
 
 main()
