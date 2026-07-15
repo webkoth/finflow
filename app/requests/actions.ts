@@ -24,7 +24,11 @@ export async function bulkApproveRequests(
   if (uids.length === 0) return { error: "Выберите заявки" }
 
   const requests = await prisma.paymentRequest.findMany({
-    where: { uid: { in: uids }, approvalStatus: "on_approval" },
+    where: {
+      uid: { in: uids },
+      approvalStatus: "on_approval",
+      isDeletedIn1c: false,
+    },
     include: { _count: { select: { debits: true } } },
   })
   if (requests.length === 0)

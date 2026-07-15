@@ -45,6 +45,7 @@ export async function approveRequest(
     include: { _count: { select: { debits: true } } },
   })
   if (!request) return { error: "Заявка не найдена" }
+  if (request.isDeletedIn1c) return { error: "Заявка удалена в 1С" }
   if (request.approvalStatus !== "on_approval")
     return { error: "Заявка уже обработана" }
 
@@ -84,6 +85,7 @@ export async function declineRequest(
     include: { _count: { select: { debits: true } } },
   })
   if (!request) return { error: "Заявка не найдена" }
+  if (request.isDeletedIn1c) return { error: "Заявка удалена в 1С" }
   if (request.approvalStatus !== "on_approval")
     return { error: "Заявка уже обработана" }
 
