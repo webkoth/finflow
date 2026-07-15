@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { STATUS_CLASSES, STATUS_LABELS } from "../status"
+import { ApprovalControls } from "./approval-controls"
 import { CommentForm } from "./comment-form"
 
 export const dynamic = "force-dynamic"
@@ -112,6 +113,17 @@ export default async function RequestPage({
           )}
         </CardContent>
       </Card>
+
+      {request.approvalStatus === "on_approval" && !request.isDeletedIn1c && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Согласование</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ApprovalControls uid={request.uid} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -3,6 +3,8 @@
 
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/db"
+import { computeExecutionStatus } from "@/lib/domain/execution-status"
+import { approveBids, declineBid } from "@/lib/integrations/one-c"
 
 export type FormState = { error: string | null }
 
@@ -24,6 +26,70 @@ export async function addExecutionComment(
 
   await prisma.executionComment.create({
     data: { requestId: request.id, author, text },
+  })
+
+  revalidatePath(`/requests/${uid}`)
+  revalidatePath("/requests")
+  return { error: null }
+}
+
+// Согласование уходит в 1С; при успехе статус в своей БД обновляется
+// оптимистично — следующий синк из DWH его подтвердит.
+export async function approveRequest(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const uid = String(formData.get("uid") ?? "")
+  const request = await prisma.paymentRequest.findUnique({
+    where: { uid },
+    include: { _count: { select: { debits: true } } },
+  })
+  if (!request) return { error: "Заявка не найдена" }
+  if (request.approvalStatus !== "on_approval")
+    return { error: "Заявка уже обработана" }
+
+  const res = await approveBids([uid])
+  if (!res.ok) return { error: res.error }
+
+  await prisma.paymentRequest.update({
+    where: { uid },
+    data: {
+      approvalStatus: "approved",
+      executionStatus: computeExecutionStatus(
+        {
+          approvalStatus: "approved",
+          payDate: request.payDate,
+          hasDebits: request._count.debits > 0,
+        },
+        new Date()
+      ),
+    },
+  })
+
+  revalidatePath(`/requests/${uid}`)
+  revalidatePath("/requests")
+  return { error: null }
+}
+
+export async function declineRequest(
+  _prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const uid = String(formData.get("uid") ?? "")
+  const reason = String(formData.get("reason") ?? "").trim()
+  if (!reason) return { error: "Укажите причину отклонения" }
+
+  const request = await prisma.paymentRequest.findUnique({ where: { uid } })
+  if (!request) return { error: "Заявка не найдена" }
+  if (request.approvalStatus !== "on_approval")
+    return { error: "Заявка уже обработана" }
+
+  const res = await declineBid(uid, reason)
+  if (!res.ok) return { error: res.error }
+
+  await prisma.paymentRequest.update({
+    where: { uid },
+    data: { approvalStatus: "declined", executionStatus: "declined" },
   })
 
   revalidatePath(`/requests/${uid}`)

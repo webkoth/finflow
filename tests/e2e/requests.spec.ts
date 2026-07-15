@@ -43,3 +43,21 @@ test("комментарий бухгалтера сохраняется и ви
   await page.getByRole("button", { name: "Добавить комментарий" }).click()
   await expect(page.getByText(text)).toBeVisible()
 })
+
+test("согласование заявки меняет статус (mock 1С)", async ({ page }) => {
+  await syncFixtureData(page) // синк возвращает fixture-статусы, тест повторяем
+  await page.getByRole("link", { name: "REQ-0004" }).click()
+  await page.getByRole("button", { name: "Согласовать" }).click()
+  await expect(page.getByText("Ждёт оплаты")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Согласовать" })).toHaveCount(0)
+})
+
+test("отклонение без причины показывает ошибку", async ({ page }) => {
+  await syncFixtureData(page)
+  await page.getByRole("link", { name: "REQ-0006" }).click()
+  // required-атрибут не даст отправить пустую форму — проверяем серверную
+  // валидацию через пробел
+  await page.getByLabel("Причина отклонения").fill(" ")
+  await page.getByRole("button", { name: "Отклонить" }).click()
+  await expect(page.getByText("Укажите причину отклонения")).toBeVisible()
+})
