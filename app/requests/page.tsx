@@ -5,15 +5,8 @@ import { formatMoneyBig } from "@/lib/domain/money"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
+import { RequestsTable, type RequestRow } from "./requests-table"
 import { STATUS_CLASSES, STATUS_LABELS } from "./status"
 import { refreshData } from "./actions"
 
@@ -105,6 +98,22 @@ export default async function RequestsPage({
       orderBy: { fund: "asc" },
     }),
   ])
+
+  const rows: RequestRow[] = requests.map((r) => ({
+    uid: r.uid,
+    number: r.number,
+    urgent: r.importance === 1,
+    orgName: r.orgName,
+    partnerName: r.partnerName ?? "",
+    fund: r.fund ?? "",
+    payDateText: formatDate(r.payDate),
+    amountText: formatMoneyBig(r.amountMinor, r.currency),
+    statusLabel: STATUS_LABELS[r.executionStatus],
+    statusClass: STATUS_CLASSES[r.executionStatus],
+    hasExplanation:
+      r.executionStatus === "overdue" && r._count.executionComments > 0,
+    canSelect: r.approvalStatus === "on_approval",
+  }))
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-8">
@@ -204,66 +213,7 @@ export default async function RequestsPage({
         </Link>
       </form>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Номер</TableHead>
-            <TableHead>Юрлицо</TableHead>
-            <TableHead>Контрагент</TableHead>
-            <TableHead>Фонд</TableHead>
-            <TableHead>Дата оплаты</TableHead>
-            <TableHead className="text-right">Сумма</TableHead>
-            <TableHead>Статус</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {requests.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={7} className="text-muted-foreground">
-                Заявок нет. Нажмите «Обновить», чтобы загрузить данные.
-              </TableCell>
-            </TableRow>
-          )}
-          {requests.map((r) => (
-            <TableRow key={r.uid}>
-              <TableCell>
-                <Link
-                  href={`/requests/${r.uid}`}
-                  className="text-primary underline underline-offset-4"
-                >
-                  {r.number}
-                </Link>
-                {r.importance === 1 && (
-                  <span className="ml-1 text-destructive" title="Срочная">
-                    !
-                  </span>
-                )}
-              </TableCell>
-              <TableCell>{r.orgName}</TableCell>
-              <TableCell>{r.partnerName}</TableCell>
-              <TableCell>{r.fund}</TableCell>
-              <TableCell>{formatDate(r.payDate)}</TableCell>
-              <TableCell className="text-right">
-                {formatMoneyBig(r.amountMinor, r.currency)}
-              </TableCell>
-              <TableCell>
-                <Badge className={STATUS_CLASSES[r.executionStatus]}>
-                  {STATUS_LABELS[r.executionStatus]}
-                </Badge>
-                {r.executionStatus === "overdue" &&
-                  r._count.executionComments > 0 && (
-                    <span
-                      className="ml-1 text-xs text-muted-foreground"
-                      title="Есть объяснение бухгалтера"
-                    >
-                      💬
-                    </span>
-                  )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <RequestsTable rows={rows} />
     </main>
   )
 }
