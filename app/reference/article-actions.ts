@@ -17,7 +17,9 @@ function parseArticleForm(fd: FormData) {
   const isGroup = str(fd, "isGroup") === "1"
   const flowRaw = str(fd, "flow")
   const flow: ArticleFlow | null =
-    flowRaw === "INFLOW" || flowRaw === "OUTFLOW" ? (flowRaw as ArticleFlow) : null
+    flowRaw === "INFLOW" || flowRaw === "OUTFLOW"
+      ? (flowRaw as ArticleFlow)
+      : null
   const parentRaw = str(fd, "parentId")
   return {
     name: str(fd, "name"),
@@ -91,7 +93,10 @@ export async function updateArticleAction(
   return { error: null }
 }
 
-export async function setArticleActiveAction(path: string, fd: FormData): Promise<void> {
+export async function setArticleActiveAction(
+  path: string,
+  fd: FormData
+): Promise<void> {
   const id = str(fd, "id")
   const active = str(fd, "active") === "1"
   if (!id) return

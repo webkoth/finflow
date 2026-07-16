@@ -9,9 +9,12 @@ export type BankAccountInput = {
   organization: string
 }
 
-export function validateBankAccountInput(input: BankAccountInput): string | null {
+export function validateBankAccountInput(
+  input: BankAccountInput
+): string | null {
   if (!input.name.trim()) return "Укажите название счёта"
-  if (!/^\d{20}$/.test(input.accountNumber.trim())) return "Номер счёта — 20 цифр"
+  if (!/^\d{20}$/.test(input.accountNumber.trim()))
+    return "Номер счёта — 20 цифр"
   if (!input.bankName.trim()) return "Укажите банк"
   if (!/^\d{9}$/.test(input.bankBic.trim())) return "БИК — 9 цифр"
   if (!input.organization.trim()) return "Укажите организацию-владельца"

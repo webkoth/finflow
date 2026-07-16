@@ -57,7 +57,9 @@ export function buildArticleTree(items: ArticleNode[]): ArticleTreeNode[] {
   return roots
 }
 
-export function flattenArticleTree(roots: ArticleTreeNode[]): ArticleTreeNode[] {
+export function flattenArticleTree(
+  roots: ArticleTreeNode[]
+): ArticleTreeNode[] {
   const out: ArticleTreeNode[] = []
   const walk = (nodes: ArticleTreeNode[]) => {
     for (const node of nodes) {
@@ -80,7 +82,8 @@ export function validateArticleInput(
   if (!input.isGroup && !input.flow) return "Укажите тип статьи"
 
   if (input.parentId) {
-    if (input.parentId === selfId) return "Статья не может быть родителем самой себе"
+    if (input.parentId === selfId)
+      return "Статья не может быть родителем самой себе"
     const byId = new Map(allSameKind.map((a) => [a.id, a]))
     const parent = byId.get(input.parentId)
     if (!parent) return "Родитель не найден"
@@ -89,7 +92,8 @@ export function validateArticleInput(
     if (selfId) {
       let cur: ArticleNode | undefined = parent
       while (cur) {
-        if (cur.id === selfId) return "Нельзя переместить статью внутрь её потомка"
+        if (cur.id === selfId)
+          return "Нельзя переместить статью внутрь её потомка"
         cur = cur.parentId ? byId.get(cur.parentId) : undefined
       }
     }

@@ -104,10 +104,17 @@ export default async function Page({
                   </Link>
                   <form action={setBankAccountActive}>
                     <input type="hidden" name="id" value={a.id} />
-                    <input type="hidden" name="active" value={a.isActive ? "" : "1"} />
+                    <input
+                      type="hidden"
+                      name="active"
+                      value={a.isActive ? "" : "1"}
+                    />
                     <button
                       type="submit"
-                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                      className={buttonVariants({
+                        variant: "ghost",
+                        size: "sm",
+                      })}
                     >
                       {a.isActive ? "В архив" : "Вернуть"}
                     </button>

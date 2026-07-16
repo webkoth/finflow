@@ -15,7 +15,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { ArticleForm, type EditingArticle, type GroupOption } from "./article-form"
+import {
+  ArticleForm,
+  type EditingArticle,
+  type GroupOption,
+} from "./article-form"
 import { FLOW_LABELS } from "./article-labels"
 
 type Kind = "CASHFLOW" | "PNL"
@@ -114,19 +118,28 @@ export function ArticleDictionary({
                 </TableCell>
                 <TableCell>{r.code}</TableCell>
                 <TableCell>
-                  {r.flow ? <Badge variant="secondary">{labels[r.flow]}</Badge> : null}
+                  {r.flow ? (
+                    <Badge variant="secondary">{labels[r.flow]}</Badge>
+                  ) : null}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Link
                       href={`${basePath}?edit=${r.id}${showArchived ? "&archived=1" : ""}`}
-                      className={buttonVariants({ variant: "ghost", size: "sm" })}
+                      className={buttonVariants({
+                        variant: "ghost",
+                        size: "sm",
+                      })}
                     >
                       Изменить
                     </Link>
                     <form action={setActiveAction}>
                       <input type="hidden" name="id" value={r.id} />
-                      <input type="hidden" name="active" value={active ? "" : "1"} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={active ? "" : "1"}
+                      />
                       <Button variant="ghost" size="sm" type="submit">
                         {active ? "В архив" : "Вернуть"}
                       </Button>

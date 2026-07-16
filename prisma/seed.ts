@@ -77,7 +77,12 @@ async function main() {
   await prisma.bankAccount.deleteMany()
 
   const opGroup = await prisma.article.create({
-    data: { kind: "CASHFLOW", name: "Операционная деятельность", code: "1", isGroup: true },
+    data: {
+      kind: "CASHFLOW",
+      name: "Операционная деятельность",
+      code: "1",
+      isGroup: true,
+    },
   })
   await prisma.article.createMany({
     data: [
@@ -98,7 +103,12 @@ async function main() {
     ],
   })
   const finGroup = await prisma.article.create({
-    data: { kind: "CASHFLOW", name: "Финансовая деятельность", code: "2", isGroup: true },
+    data: {
+      kind: "CASHFLOW",
+      name: "Финансовая деятельность",
+      code: "2",
+      isGroup: true,
+    },
   })
   await prisma.article.create({
     data: {
@@ -114,15 +124,33 @@ async function main() {
     data: { kind: "PNL", name: "Доходы", code: "1", isGroup: true },
   })
   await prisma.article.create({
-    data: { kind: "PNL", name: "Выручка", code: "1.1", flow: "INFLOW", parentId: incGroup.id },
+    data: {
+      kind: "PNL",
+      name: "Выручка",
+      code: "1.1",
+      flow: "INFLOW",
+      parentId: incGroup.id,
+    },
   })
   const expGroup = await prisma.article.create({
     data: { kind: "PNL", name: "Расходы", code: "2", isGroup: true },
   })
   await prisma.article.createMany({
     data: [
-      { kind: "PNL", name: "Зарплата", code: "2.1", flow: "OUTFLOW", parentId: expGroup.id },
-      { kind: "PNL", name: "Аренда", code: "2.2", flow: "OUTFLOW", parentId: expGroup.id },
+      {
+        kind: "PNL",
+        name: "Зарплата",
+        code: "2.1",
+        flow: "OUTFLOW",
+        parentId: expGroup.id,
+      },
+      {
+        kind: "PNL",
+        name: "Аренда",
+        code: "2.2",
+        flow: "OUTFLOW",
+        parentId: expGroup.id,
+      },
     ],
   })
 

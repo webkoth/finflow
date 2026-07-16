@@ -65,7 +65,12 @@ export function BankAccountForm({
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="bankName">Банк</Label>
-          <Input id="bankName" name="bankName" defaultValue={editing?.bankName} required />
+          <Input
+            id="bankName"
+            name="bankName"
+            defaultValue={editing?.bankName}
+            required
+          />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="bankBic">БИК</Label>
@@ -79,7 +84,12 @@ export function BankAccountForm({
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="currency">Валюта</Label>
-          <Input id="currency" name="currency" defaultValue={editing?.currency ?? "RUB"} required />
+          <Input
+            id="currency"
+            name="currency"
+            defaultValue={editing?.currency ?? "RUB"}
+            required
+          />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="organization">Организация</Label>
@@ -99,7 +109,10 @@ export function BankAccountForm({
           {isPending ? "Сохраняю…" : editing ? "Сохранить" : "Добавить"}
         </Button>
         {editing && (
-          <a href={cancelHref} className={buttonVariants({ variant: "outline" })}>
+          <a
+            href={cancelHref}
+            className={buttonVariants({ variant: "outline" })}
+          >
             Отмена
           </a>
         )}

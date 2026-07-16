@@ -46,13 +46,18 @@ export function ArticleForm({
   const [state, formAction, isPending] = useActionState(action, initial)
   const [isGroup, setIsGroup] = useState(editing?.isGroup ?? false)
   const [flow, setFlow] = useState<string | null>(editing?.flow ?? null)
-  const [parentId, setParentId] = useState<string>(editing?.parentId ?? "__none__")
+  const [parentId, setParentId] = useState<string>(
+    editing?.parentId ?? "__none__"
+  )
   const formRef = useRef<HTMLFormElement>(null)
   const wasPending = useRef(false)
   const labels = FLOW_LABELS[kind]
 
   // base-ui Select.Value показывает label из items[value], иначе — сырое значение.
-  const flowItems: Record<string, string> = { INFLOW: labels.INFLOW, OUTFLOW: labels.OUTFLOW }
+  const flowItems: Record<string, string> = {
+    INFLOW: labels.INFLOW,
+    OUTFLOW: labels.OUTFLOW,
+  }
   const parentItems: Record<string, string> = { __none__: "— нет —" }
   for (const g of groups) parentItems[g.id] = " ".repeat(g.depth * 2) + g.name
 
@@ -142,7 +147,11 @@ export function ArticleForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="description">Описание</Label>
-        <Textarea id="description" name="description" defaultValue={editing?.description ?? ""} />
+        <Textarea
+          id="description"
+          name="description"
+          defaultValue={editing?.description ?? ""}
+        />
       </div>
 
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
@@ -152,7 +161,10 @@ export function ArticleForm({
           {isPending ? "Сохраняю…" : editing ? "Сохранить" : "Добавить"}
         </Button>
         {editing && (
-          <a href={cancelHref} className={buttonVariants({ variant: "outline" })}>
+          <a
+            href={cancelHref}
+            className={buttonVariants({ variant: "outline" })}
+          >
             Отмена
           </a>
         )}

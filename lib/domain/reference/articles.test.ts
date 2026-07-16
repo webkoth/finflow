@@ -17,7 +17,10 @@ const n = (o: Partial<ArticleNode> & { id: string }): ArticleNode => ({
 
 describe("buildArticleTree", () => {
   it("вкладывает детей в родителя и проставляет глубину", () => {
-    const tree = buildArticleTree([n({ id: "g", isGroup: true }), n({ id: "c", parentId: "g" })])
+    const tree = buildArticleTree([
+      n({ id: "g", isGroup: true }),
+      n({ id: "c", parentId: "g" }),
+    ])
     expect(tree).toHaveLength(1)
     expect(tree[0].id).toBe("g")
     expect(tree[0].depth).toBe(0)
@@ -42,7 +45,10 @@ describe("buildArticleTree", () => {
 describe("flattenArticleTree", () => {
   it("возвращает узлы в порядке обхода с глубиной", () => {
     const rows = flattenArticleTree(
-      buildArticleTree([n({ id: "g", isGroup: true }), n({ id: "c", parentId: "g" })])
+      buildArticleTree([
+        n({ id: "g", isGroup: true }),
+        n({ id: "c", parentId: "g" }),
+      ])
     )
     expect(rows.map((r) => [r.id, r.depth])).toEqual([
       ["g", 0],
@@ -52,47 +58,79 @@ describe("flattenArticleTree", () => {
 })
 
 describe("validateArticleInput", () => {
-  const list = [n({ id: "g", isGroup: true }), n({ id: "leaf", flow: "INFLOW" })]
+  const list = [
+    n({ id: "g", isGroup: true }),
+    n({ id: "leaf", flow: "INFLOW" }),
+  ]
 
   it("требует наименование", () => {
     expect(
-      validateArticleInput({ name: " ", isGroup: false, flow: "INFLOW", parentId: null }, list)
+      validateArticleInput(
+        { name: " ", isGroup: false, flow: "INFLOW", parentId: null },
+        list
+      )
     ).toMatch(/наименование/i)
   })
   it("требует тип у конечной статьи", () => {
     expect(
-      validateArticleInput({ name: "X", isGroup: false, flow: null, parentId: null }, list)
+      validateArticleInput(
+        { name: "X", isGroup: false, flow: null, parentId: null },
+        list
+      )
     ).toMatch(/тип/i)
   })
   it("разрешает группу без типа", () => {
     expect(
-      validateArticleInput({ name: "X", isGroup: true, flow: null, parentId: null }, list)
+      validateArticleInput(
+        { name: "X", isGroup: true, flow: null, parentId: null },
+        list
+      )
     ).toBeNull()
   })
   it("родителем может быть только группа", () => {
     expect(
-      validateArticleInput({ name: "X", isGroup: false, flow: "INFLOW", parentId: "leaf" }, list)
+      validateArticleInput(
+        { name: "X", isGroup: false, flow: "INFLOW", parentId: "leaf" },
+        list
+      )
     ).toMatch(/группа/i)
   })
   it("отклоняет несуществующего родителя", () => {
     expect(
-      validateArticleInput({ name: "X", isGroup: false, flow: "INFLOW", parentId: "nope" }, list)
+      validateArticleInput(
+        { name: "X", isGroup: false, flow: "INFLOW", parentId: "nope" },
+        list
+      )
     ).toMatch(/не найден/i)
   })
   it("запрещает делать статью родителем самой себе", () => {
     expect(
-      validateArticleInput({ name: "G", isGroup: true, flow: null, parentId: "g" }, list, "g")
+      validateArticleInput(
+        { name: "G", isGroup: true, flow: null, parentId: "g" },
+        list,
+        "g"
+      )
     ).toMatch(/сам/i)
   })
   it("запрещает цикл (родитель — собственный потомок)", () => {
-    const nested = [n({ id: "g", isGroup: true }), n({ id: "sub", isGroup: true, parentId: "g" })]
+    const nested = [
+      n({ id: "g", isGroup: true }),
+      n({ id: "sub", isGroup: true, parentId: "g" }),
+    ]
     expect(
-      validateArticleInput({ name: "G", isGroup: true, flow: null, parentId: "sub" }, nested, "g")
+      validateArticleInput(
+        { name: "G", isGroup: true, flow: null, parentId: "sub" },
+        nested,
+        "g"
+      )
     ).toMatch(/потомк|цикл/i)
   })
   it("возвращает null для корректной статьи", () => {
     expect(
-      validateArticleInput({ name: "X", isGroup: false, flow: "OUTFLOW", parentId: "g" }, list)
+      validateArticleInput(
+        { name: "X", isGroup: false, flow: "OUTFLOW", parentId: "g" },
+        list
+      )
     ).toBeNull()
   })
 })

@@ -18,15 +18,21 @@ describe("validateBankAccountInput", () => {
     expect(validateBankAccountInput({ ...base, name: " " })).toMatch(/назв/i)
   })
   it("требует ровно 20 цифр в номере счёта", () => {
-    expect(validateBankAccountInput({ ...base, accountNumber: "123" })).toMatch(/20/)
+    expect(validateBankAccountInput({ ...base, accountNumber: "123" })).toMatch(
+      /20/
+    )
   })
   it("требует ровно 9 цифр в БИК", () => {
-    expect(validateBankAccountInput({ ...base, bankBic: "12345" })).toMatch(/БИК/)
+    expect(validateBankAccountInput({ ...base, bankBic: "12345" })).toMatch(
+      /БИК/
+    )
   })
   it("требует банк", () => {
     expect(validateBankAccountInput({ ...base, bankName: "" })).toMatch(/банк/i)
   })
   it("требует организацию", () => {
-    expect(validateBankAccountInput({ ...base, organization: "" })).toMatch(/организац/i)
+    expect(validateBankAccountInput({ ...base, organization: "" })).toMatch(
+      /организац/i
+    )
   })
 })

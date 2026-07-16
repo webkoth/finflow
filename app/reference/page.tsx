@@ -2,9 +2,21 @@ import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const items = [
-  { href: "/reference/cashflow-items", title: "Статьи ДДС", desc: "Движение денежных средств" },
-  { href: "/reference/pnl-items", title: "Статьи БДР", desc: "Бюджет доходов и расходов" },
-  { href: "/reference/bank-accounts", title: "Банковские счета", desc: "Счета организаций" },
+  {
+    href: "/reference/cashflow-items",
+    title: "Статьи ДДС",
+    desc: "Движение денежных средств",
+  },
+  {
+    href: "/reference/pnl-items",
+    title: "Статьи БДР",
+    desc: "Бюджет доходов и расходов",
+  },
+  {
+    href: "/reference/bank-accounts",
+    title: "Банковские счета",
+    desc: "Счета организаций",
+  },
 ]
 
 export default function Page() {
@@ -18,7 +30,9 @@ export default function Page() {
               <CardHeader>
                 <CardTitle className="text-base">{i.title}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{i.desc}</CardContent>
+              <CardContent className="text-sm text-muted-foreground">
+                {i.desc}
+              </CardContent>
             </Card>
           </Link>
         ))}
