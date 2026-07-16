@@ -15,6 +15,10 @@ function buildRequests(): DwhRequestRow[] {
     partnerUid: null,
     comment: null,
     importance: 0,
+    debitAccountUid: null as string | null,
+    contractUid: null as string | null,
+    orderUid: null as string | null,
+    initiatorHead: null as string | null,
   }
   return [
     {
@@ -76,6 +80,12 @@ function buildRequests(): DwhRequestRow[] {
       partnerName: "Guangzhou Textile Co.",
       payDate: daysFromNow(5),
       approvalStatus: "on_approval",
+      debitAccountUid: "fx-acc-tori-rub",
+      partnerUid: "fx-prt-guangzhou",
+      contractUid: "fx-ctr-14",
+      orderUid: "fx-ord-78",
+      initiatorHead: "Петров С.",
+      comment: "Аванс 25% по заказу №78, отгрузка августа",
     },
     {
       ...common,
@@ -107,6 +117,27 @@ function buildRequests(): DwhRequestRow[] {
       payDate: daysFromNow(2),
       approvalStatus: "on_approval",
       importance: 1, // срочная
+      debitAccountUid: "fx-acc-tori-cny",
+      partnerUid: "fx-prt-shenzhen",
+      orderUid: "fx-ord-91",
+      initiatorHead: "Петров С.",
+    },
+    {
+      ...common,
+      uid: "fx-req-7",
+      number: "REQ-0007",
+      date: daysFromNow(0),
+      orgName: "ИП Бобровская",
+      initiator: "Смирнов К.",
+      amountMinor: 620_000_00n,
+      currency: "RUB",
+      cashFlowItem: "Упаковка",
+      fund: "Операционные расходы",
+      partnerName: "ООО «НовоПак»",
+      partnerUid: "fx-prt-novopak",
+      debitAccountUid: "fx-acc-bobr-rub",
+      payDate: daysFromNow(4),
+      approvalStatus: "on_approval", // новый поставщик без основания → 🔴
     },
   ]
 }

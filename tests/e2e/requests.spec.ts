@@ -77,6 +77,7 @@ test("массовое согласование выбранных заявок 
   await syncFixtureData(page)
   await page.getByLabel("Выбрать REQ-0004").check()
   await page.getByLabel("Выбрать REQ-0006").check()
+  await page.getByLabel("Выбрать REQ-0007").check()
   await page.getByRole("button", { name: "Согласовать выбранные" }).click()
   await expect(
     page.getByRole("button", { name: "Согласовать выбранные" })
