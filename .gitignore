@@ -38,3 +38,6 @@ pnpm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .superpowers/
+
+# локальный preview-конфиг (машинные абсолютные пути)
+.claude/launch.json
