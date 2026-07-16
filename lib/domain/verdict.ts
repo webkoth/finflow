@@ -309,12 +309,9 @@ function checkOrderContract(input: VerdictInput): VerdictCheck {
     const remaining = contract.amountMinor - contract.paidMinor
     const remainingRub = toRub(remaining, contract.currency, rates ?? {})
     const amountRub = toRub(request.amountMinor, request.currency, rates ?? {})
-    if (
-      remainingRub !== null &&
-      amountRub !== null &&
-      contract.amountMinor > 0n &&
-      remainingRub < amountRub
-    )
+    if (remainingRub === null || amountRub === null)
+      return noData("order_contract", "нет курса валюты")
+    if (contract.amountMinor > 0n && remainingRub < amountRub)
       return {
         id: "order_contract",
         label: "Платёж превысит сумму договора",

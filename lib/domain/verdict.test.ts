@@ -466,6 +466,57 @@ describe("проверка «Заказ / договор»", () => {
     })
     expect(check(input, "order_contract").status).toBe("info")
   })
+
+  it("заказ в валюте без курса → info", () => {
+    const input = makeInput({
+      rates: {},
+      order: {
+        number: "91",
+        amountMinor: 10_000_00n,
+        paidMinor: 0n,
+        currency: "USD",
+      },
+    })
+    expect(check(input, "order_contract").status).toBe("info")
+  })
+
+  it("сумма заказа 0 → info «сумма не задана»", () => {
+    const input = makeInput({
+      order: { number: "78", amountMinor: 0n, paidMinor: 0n, currency: "RUB" },
+    })
+    expect(check(input, "order_contract").status).toBe("info")
+  })
+
+  it("договор в валюте без курса → info (не зелёный)", () => {
+    const input = makeInput({
+      rates: {},
+      order: null,
+      contract: {
+        number: "14",
+        date: new Date("2025-03-02"),
+        isActive: true,
+        amountMinor: 150_000_00n,
+        paidMinor: 100_000_00n,
+        currency: "USD",
+      },
+    })
+    expect(check(input, "order_contract").status).toBe("info")
+  })
+
+  it("рамочный договор (сумма 0) → ok, переплата не проверяется", () => {
+    const input = makeInput({
+      order: null,
+      contract: {
+        number: "14",
+        date: new Date("2025-03-02"),
+        isActive: true,
+        amountMinor: 0n,
+        paidMinor: 500_000_00n,
+        currency: "RUB",
+      },
+    })
+    expect(check(input, "order_contract").status).toBe("ok")
+  })
 })
 
 describe("проверка «История контрагента»", () => {
@@ -517,5 +568,16 @@ describe("проверка «История контрагента»", () => {
 
   it("срез контрагентов недоступен → info", () => {
     expect(check(makeInput({ partner: null }), "partner").status).toBe("info")
+  })
+
+  it("постоянный контрагент без даты последнего платежа → ok", () => {
+    const input = makeInput({
+      partner: {
+        paymentCount: 12,
+        firstOperationAt: null,
+        lastPaymentAt: null,
+      },
+    })
+    expect(check(input, "partner").status).toBe("ok")
   })
 })
