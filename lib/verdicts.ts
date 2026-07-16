@@ -165,6 +165,11 @@ function toVerdictInput(
   const contract = request.contractUid
     ? (s.contracts.get(request.contractUid) ?? null)
     : null
+  // Ссылка в 1С есть, но строка среза не доехала (слайс-гэп) → «нет данных»,
+  // а не ложное «нет ни заказа, ни договора».
+  const referencedButMissing =
+    (request.orderUid !== null && order === null) ||
+    (request.contractUid !== null && contract === null)
   return {
     request: {
       amountMinor: request.amountMinor,
@@ -218,7 +223,10 @@ function toVerdictInput(
           currency: contract.currency,
         }
       : null,
-    orderContractAvailable: s.orderContractAvailable,
+    orderContractAvailable:
+      !order && !contract && referencedButMissing
+        ? false
+        : s.orderContractAvailable,
   }
 }
 
@@ -286,12 +294,14 @@ export async function loadRequestContext(
         OR: [
           ...(request.partnerUid ? [{ partnerUid: request.partnerUid }] : []),
           ...(request.orderUid ? [{ orderUid: request.orderUid }] : []),
-          ...(request.partnerName
+          // Имя — только без uid: свободный текст тянет чужих тёзок.
+          ...(!request.partnerUid && request.partnerName
             ? [{ partnerName: request.partnerName }]
             : []),
         ],
       },
       orderBy: { payDate: "asc" },
+      take: 20,
     }),
   ])
   const verdict = computeVerdict(
