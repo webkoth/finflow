@@ -3,6 +3,7 @@
 // fin/composables/useVerdict.ts с исправлениями по спеке).
 // null-срез = «данных нет» → проверка info, из вердикта исключается.
 
+import { formatDate } from "./dates"
 import { formatMoneyBig } from "./money"
 
 export type VerdictLevel = "ok" | "warn" | "bad" | "block" // block зарезервирован, автоматически не выставляется
@@ -272,17 +273,111 @@ function checkDocument(input: VerdictInput): VerdictCheck {
 }
 
 function checkOrderContract(input: VerdictInput): VerdictCheck {
-  void input
-  return noData("order_contract") // Task 4
+  const { order, contract, orderContractAvailable, request, rates } = input
+
+  if (order) {
+    const amountRub = toRub(request.amountMinor, request.currency, rates ?? {})
+    const orderRub = toRub(order.amountMinor, order.currency, rates ?? {})
+    const paidRub = toRub(order.paidMinor, order.currency, rates ?? {})
+    if (amountRub === null || orderRub === null || paidRub === null)
+      return noData("order_contract", "нет курса валюты")
+    if (orderRub <= 0) return noData("order_contract", "сумма заказа не задана")
+    const percent = ((paidRub + amountRub) / orderRub) * 100
+    if (percent <= 100)
+      return {
+        id: "order_contract",
+        label: `Заказ поставщику №${order.number}`,
+        status: "ok",
+        sublabel: `с этим платежом оплачено ${percent.toFixed(0)}% заказа`,
+      }
+    return {
+      id: "order_contract",
+      label: "Переплата по заказу",
+      status: "warn",
+      sublabel: `с этим платежом ${percent.toFixed(0)}% суммы заказа №${order.number}`,
+    }
+  }
+
+  if (contract) {
+    if (!contract.isActive)
+      return {
+        id: "order_contract",
+        label: "Договор закрыт",
+        status: "bad",
+        sublabel: `№${contract.number} от ${formatDate(contract.date)}`,
+      }
+    const remaining = contract.amountMinor - contract.paidMinor
+    const remainingRub = toRub(remaining, contract.currency, rates ?? {})
+    const amountRub = toRub(request.amountMinor, request.currency, rates ?? {})
+    if (
+      remainingRub !== null &&
+      amountRub !== null &&
+      contract.amountMinor > 0n &&
+      remainingRub < amountRub
+    )
+      return {
+        id: "order_contract",
+        label: "Платёж превысит сумму договора",
+        status: "warn",
+        sublabel: `остаток по договору ${formatMoneyBig(remaining, contract.currency)}`,
+      }
+    return {
+      id: "order_contract",
+      label: "Договор активен",
+      status: "ok",
+      sublabel: `№${contract.number} от ${formatDate(contract.date)}`,
+    }
+  }
+
+  if (orderContractAvailable)
+    return {
+      id: "order_contract",
+      label: "Нет ни заказа, ни договора",
+      status: "bad",
+      sublabel: "укажите основание в 1С",
+    }
+  return noData("order_contract")
 }
 
 function checkPartnerHistory(
   input: VerdictInput,
   thresholds: VerdictThresholds
 ): VerdictCheck {
-  void input
-  void thresholds
-  return noData("partner") // Task 4
+  const { partner, now } = input
+  if (!partner) return noData("partner")
+
+  if (partner.paymentCount >= thresholds.minOperationsForConstant) {
+    const staleMs = thresholds.oldPartnerMonths * 30 * 24 * 60 * 60 * 1000
+    if (
+      partner.lastPaymentAt &&
+      now.getTime() - partner.lastPaymentAt.getTime() > staleMs
+    )
+      return {
+        id: "partner",
+        label: "Давно не работали",
+        status: "warn",
+        sublabel: `последний платёж ${formatDate(partner.lastPaymentAt)}`,
+      }
+    return {
+      id: "partner",
+      label: "Постоянный контрагент",
+      status: "ok",
+      sublabel: `${partner.paymentCount} платежей`,
+    }
+  }
+  if (partner.paymentCount >= 1)
+    return {
+      id: "partner",
+      label: "Эпизодический контрагент",
+      status: "warn",
+      sublabel: `${partner.paymentCount} платеж(а)`,
+    }
+  return {
+    id: "partner",
+    label: "Новый поставщик",
+    status: "bad",
+    sublabel: "первый платёж",
+  }
 }
 
 function checkFinplan(): VerdictCheck {
