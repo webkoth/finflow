@@ -134,3 +134,51 @@ model SyncRun {
   @@index([status, startedAt])
   @@map("sync_runs")
 }
+
+// --- Раздел «Справочники» (спека 2026-07-16-reference-dictionaries-design) ---
+
+enum ArticleKind {
+  CASHFLOW // статьи ДДС
+  PNL // статьи БДР
+}
+
+enum ArticleFlow {
+  INFLOW // приток (поступление / доход)
+  OUTFLOW // отток (выбытие / расход)
+}
+
+// Статья ДДС или БДР. Дерево произвольной глубины через parentId.
+// Группа (isGroup) — папка без типа; конечная статья имеет flow.
+// Мягкое удаление: isActive=false (архив), физически не удаляем.
+model Article {
+  id          String       @id @default(cuid())
+  kind        ArticleKind
+  name        String
+  code        String?
+  flow        ArticleFlow?
+  isGroup     Boolean      @default(false)
+  description String?
+  parentId    String?
+  parent      Article?     @relation("ArticleTree", fields: [parentId], references: [id])
+  children    Article[]    @relation("ArticleTree")
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([kind, parentId])
+  @@map("articles")
+}
+
+// Банковский счёт организации. Плоский справочник, мягкое удаление.
+model BankAccount {
+  id            String   @id @default(cuid())
+  name          String
+  accountNumber String
+  bankName      String
+  bankBic       String
+  currency      String   @default("RUB")
+  organization  String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@map("bank_accounts")
+}
