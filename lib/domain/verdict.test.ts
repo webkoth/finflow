@@ -259,6 +259,53 @@ describe("проверка «Деньги на счёте»", () => {
     expect(c.label).toBe("Счёт списания не указан")
   })
 
+  it("счёт списания указан, но его нет в срезе → warn «не найден в остатках»", () => {
+    const input = makeInput()
+    input.request.debitAccountUid = "acc-missing"
+    const c = check(input, "funds")
+    expect(c.status).toBe("warn")
+    expect(c.label).toBe("Счёт списания не найден в остатках")
+  })
+
+  it("счёт списания в другой валюте — идём через сумму юрлица → warn «нужен перевод»", () => {
+    const input = makeInput({
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "ВТБ $",
+          currency: "USD",
+          balanceMinor: 5_000_00n, // 5 000 $ × 76 = 380 000 ₽ — хватает по юрлицу
+        },
+      ],
+    })
+    const c = check(input, "funds")
+    expect(c.status).toBe("warn")
+    expect(c.label).toBe("Нужен перевод между счетами")
+  })
+
+  it("счета в валюте без курса не входят в сумму юрлица → bad", () => {
+    const input = makeInput({
+      balances: [
+        {
+          accountUid: "acc-1",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Сбербанк ₽",
+          currency: "RUB",
+          balanceMinor: 10_000_00n,
+        },
+        {
+          accountUid: "acc-eur",
+          orgName: "ТОРИ БРЭНДС ООО",
+          accountName: "Райф €",
+          currency: "EUR", // курса EUR нет в rates → счёт пропускается
+          balanceMinor: 100_000_000_00n,
+        },
+      ],
+    })
+    expect(check(input, "funds").status).toBe("bad")
+  })
+
   it("срез остатков пуст → info", () => {
     expect(check(makeInput({ balances: null }), "funds").status).toBe("info")
     expect(check(makeInput({ balances: [] }), "funds").status).toBe("info")

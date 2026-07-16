@@ -162,6 +162,7 @@ function checkFunds(input: VerdictInput): VerdictCheck {
   const account = request.debitAccountUid
     ? (balances.find((b) => b.accountUid === request.debitAccountUid) ?? null)
     : null
+  const accountUnknown = request.debitAccountUid !== null && account === null
   if (
     account &&
     account.currency === request.currency &&
@@ -185,7 +186,9 @@ function checkFunds(input: VerdictInput): VerdictCheck {
     if (!account)
       return {
         id: "funds",
-        label: "Счёт списания не указан",
+        label: accountUnknown
+          ? "Счёт списания не найден в остатках"
+          : "Счёт списания не указан",
         status: "warn",
         sublabel: `по юрлицу достаточно (${Math.round(orgTotalRub).toLocaleString("ru-RU")} ₽)`,
       }
