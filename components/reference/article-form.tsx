@@ -51,6 +51,11 @@ export function ArticleForm({
   const wasPending = useRef(false)
   const labels = FLOW_LABELS[kind]
 
+  // base-ui Select.Value показывает label из items[value], иначе — сырое значение.
+  const flowItems: Record<string, string> = { INFLOW: labels.INFLOW, OUTFLOW: labels.OUTFLOW }
+  const parentItems: Record<string, string> = { __none__: "— нет —" }
+  for (const g of groups) parentItems[g.id] = " ".repeat(g.depth * 2) + g.name
+
   // Сброс формы после успешного создания (в режиме правки не сбрасываем).
   useEffect(() => {
     if (wasPending.current && !isPending && state.error === null && !editing) {
@@ -96,7 +101,11 @@ export function ArticleForm({
       {!isGroup && (
         <div className="grid max-w-xs gap-1.5">
           <Label htmlFor="flow">Тип</Label>
-          <Select value={flow} onValueChange={(v) => setFlow(v as string | null)}>
+          <Select
+            items={flowItems}
+            value={flow}
+            onValueChange={(v) => setFlow(v as string | null)}
+          >
             <SelectTrigger id="flow">
               <SelectValue placeholder="Выберите тип" />
             </SelectTrigger>
@@ -110,7 +119,11 @@ export function ArticleForm({
 
       <div className="grid max-w-xs gap-1.5">
         <Label htmlFor="parentId">Родитель</Label>
-        <Select value={parentId} onValueChange={(v) => setParentId(v as string)}>
+        <Select
+          items={parentItems}
+          value={parentId}
+          onValueChange={(v) => setParentId(v as string)}
+        >
           <SelectTrigger id="parentId">
             <SelectValue placeholder="— нет —" />
           </SelectTrigger>
