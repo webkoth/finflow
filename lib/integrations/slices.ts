@@ -90,11 +90,16 @@ function pick<Row>(
   slice: SliceName,
   fixture: SliceFetcher<Row>
 ): SliceFetcher<Row> {
-  const source = process.env[`SLICE_${slice.toUpperCase()}_SOURCE`] ?? "fixture"
-  if (source === "fixture") return fixture
-  throw new Error(
-    `Срез ${slice}: источник "${source}" не поддерживается — боевые адаптеры появятся в плане DWH`
-  )
+  return {
+    async fetch() {
+      const envVar = `SLICE_${slice.toUpperCase()}_SOURCE`
+      const source = process.env[envVar] ?? "fixture"
+      if (source === "fixture") return fixture.fetch()
+      throw new Error(
+        `Срез ${slice}: источник "${source}" (${envVar}) не поддерживается — боевые адаптеры появятся в плане DWH`
+      )
+    },
+  }
 }
 
 export function getSliceFetchers(): SliceFetchers {
