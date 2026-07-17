@@ -213,7 +213,7 @@ export default async function RequestsPage({
       value: redFlags.length
         ? `${redFlags.length} · ${fmtRub(redFlagsSumRub)}`
         : "нет",
-      href: "/requests?problems=1",
+      href: buildQuery(sp, { problems: "1" }),
     },
     {
       label: "Остаток группы",

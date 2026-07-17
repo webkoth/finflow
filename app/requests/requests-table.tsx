@@ -77,7 +77,10 @@ export function RequestsTable({
     )
   const fmtRub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`
 
-  const selectedRows = rows.filter((r) => selected.has(r.uid))
+  // canSelect гаснет после ремоунта строки (фильтр, revalidate) — но uid
+  // может остаться в selected; отсеиваем такие «висячие» отметки, чтобы
+  // проекция не расходилась с реально видимыми чекбоксами.
+  const selectedRows = rows.filter((r) => r.canSelect && selected.has(r.uid))
   const afterByAccount = new Map(
     accounts.map((a) => {
       const debit = selectedRows
@@ -220,6 +223,10 @@ export function RequestsTable({
                     value={r.uid}
                     aria-label={`Выбрать ${r.number}`}
                     className="size-4 accent-primary"
+                    // Неуправляемый чекбокс ремоунтится при смене фильтра/
+                    // revalidate — defaultChecked восстанавливает визуальный
+                    // state из selected, чтобы он не разошёлся с проекцией.
+                    defaultChecked={selected.has(r.uid)}
                   />
                 ) : r.verdictLevel && r.verdictLevel !== "ok" ? (
                   <span
