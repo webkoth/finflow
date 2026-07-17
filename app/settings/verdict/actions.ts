@@ -8,8 +8,9 @@ import {
   DEFAULT_THRESHOLDS,
   type CheckId,
 } from "@/lib/domain/verdict"
+import { THRESHOLD_LABELS } from "./labels"
 
-export type FormState = { error: string | null }
+export type FormState = { error: string | null; saved?: boolean }
 
 const THRESHOLD_KEYS = Object.keys(DEFAULT_THRESHOLDS) as Array<
   keyof typeof DEFAULT_THRESHOLDS
@@ -22,10 +23,15 @@ export async function saveVerdictSettings(
 ): Promise<FormState> {
   const thresholds: Array<{ key: string; value: number }> = []
   for (const key of THRESHOLD_KEYS) {
+    const label = THRESHOLD_LABELS[key] ?? key
     const raw = String(formData.get(key) ?? "").replace(",", ".")
+    // Пустое поле не превращаем в 0 (Number("") === 0) — это молча
+    // сломало бы вердикты; осознанно введённый 0 остаётся валидным.
+    if (raw.trim() === "")
+      return { error: `Порог «${label}» не заполнен — укажите число` }
     const value = Number(raw)
     if (!Number.isFinite(value) || value < 0)
-      return { error: `Порог «${key}» должен быть неотрицательным числом` }
+      return { error: `Порог «${label}» должен быть неотрицательным числом` }
     thresholds.push({ key, value })
   }
 
@@ -48,5 +54,5 @@ export async function saveVerdictSettings(
 
   revalidatePath("/settings/verdict")
   revalidatePath("/requests")
-  return { error: null }
+  return { error: null, saved: true }
 }

@@ -2,6 +2,7 @@
 import Link from "next/link"
 import { CHECK_LABELS, type CheckId } from "@/lib/domain/verdict"
 import { loadVerdictSettings } from "@/lib/verdicts"
+import { THRESHOLD_LABELS } from "./labels"
 import {
   SettingsForm,
   type CheckField,
@@ -9,12 +10,6 @@ import {
 } from "./settings-form"
 
 export const dynamic = "force-dynamic"
-
-const THRESHOLD_LABELS: Record<string, string> = {
-  fundDeficitPercent: "Минус фонда: жёлтая зона до, % от плана недели",
-  oldPartnerMonths: "«Давно не работали» после, месяцев",
-  minOperationsForConstant: "«Постоянный контрагент» от, платежей",
-}
 
 export default async function VerdictSettingsPage() {
   const settings = await loadVerdictSettings()

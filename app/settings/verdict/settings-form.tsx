@@ -37,6 +37,7 @@ export function SettingsForm({
               type="number"
               step="1"
               min="0"
+              required
               defaultValue={t.value}
             />
           </div>
@@ -62,6 +63,9 @@ export function SettingsForm({
         {isPending ? "Сохраняю…" : "Сохранить"}
       </Button>
       {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+      {state.saved && !state.error && (
+        <p className="text-sm text-muted-foreground">Сохранено</p>
+      )}
     </form>
   )
 }
