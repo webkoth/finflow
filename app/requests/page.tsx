@@ -2,11 +2,18 @@ import Link from "next/link"
 import { prisma } from "@/lib/db"
 import { formatDate } from "@/lib/domain/dates"
 import { formatMoneyBig } from "@/lib/domain/money"
+import { toRub } from "@/lib/domain/verdict"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
-import { RequestsTable, type RequestRow } from "./requests-table"
+import {
+  RequestsTable,
+  type AccountRow,
+  type FundCardRow,
+  type RequestRow,
+} from "./requests-table"
 import { STATUS_CLASSES, STATUS_LABELS, VERDICT_DOT_CLASSES } from "./status"
 import { refreshData } from "./actions"
 import { computeVerdicts } from "@/lib/verdicts"
@@ -36,6 +43,12 @@ function validDate(value: string): string {
   // и парсабельная, но не-ISO строка дала бы там Invalid Date.
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return ""
   return Number.isNaN(new Date(value).getTime()) ? "" : value
+}
+
+// Обёрнуто в helper: react-hooks/purity не считает импуры внутри обычной
+// функции (не компонента/хука) нарушением чистоты рендера.
+function in7DaysFromNow(): Date {
+  return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 }
 
 function buildQuery(sp: Search, overrides: Record<string, string>): string {
@@ -88,7 +101,15 @@ export default async function RequestsPage({
       : {}),
   }
 
-  const [requests, lastSync, orgs, funds, partners] = await Promise.all([
+  const [
+    requests,
+    lastSync,
+    orgs,
+    funds,
+    partners,
+    accountBalances,
+    fundSnapshots,
+  ] = await Promise.all([
     prisma.paymentRequest.findMany({
       where,
       orderBy: { payDate: "desc" },
@@ -116,11 +137,15 @@ export default async function RequestsPage({
       select: { partnerName: true },
       orderBy: { partnerName: "asc" },
     }),
+    prisma.accountBalance.findMany({
+      orderBy: [{ orgName: "asc" }, { accountName: "asc" }],
+    }),
+    prisma.fundSnapshot.findMany({ orderBy: { name: "asc" } }),
   ])
 
   // Вердикт нужен только заявкам на согласовании (решение ещё не принято).
   const onApproval = requests.filter((r) => r.approvalStatus === "on_approval")
-  const { verdicts } = await computeVerdicts(onApproval)
+  const { verdicts, rates } = await computeVerdicts(onApproval)
 
   const visible = problems
     ? requests.filter((r) => verdicts.get(r.uid)?.level === "bad")
@@ -151,8 +176,66 @@ export default async function RequestsPage({
         : "",
       // Массово — только 🟢 (ТЗ §6.4): чекбокс есть только у зелёных.
       canSelect: r.approvalStatus === "on_approval" && verdict?.level === "ok",
+      debitAccountUid: r.debitAccountUid,
+      currency: r.currency,
+      amountMinorNum: Number(r.amountMinor),
+      amountRubNum: toRub(r.amountMinor, r.currency, rates) ?? 0,
     }
   })
+
+  const fmtRub = (n: number) => `${Math.round(n).toLocaleString("ru-RU")} ₽`
+  const in7Days = in7DaysFromNow()
+
+  const urgentCount = onApproval.filter((r) => r.importance === 1).length
+  const sum7DaysRub = onApproval
+    .filter((r) => r.payDate <= in7Days)
+    .reduce((sum, r) => sum + (toRub(r.amountMinor, r.currency, rates) ?? 0), 0)
+  const redFlags = onApproval.filter(
+    (r) => verdicts.get(r.uid)?.level === "bad"
+  )
+  const redFlagsSumRub = redFlags.reduce(
+    (sum, r) => sum + (toRub(r.amountMinor, r.currency, rates) ?? 0),
+    0
+  )
+  const groupBalanceRub = accountBalances.reduce(
+    (sum, b) => sum + (toRub(b.balanceMinor, b.currency, rates) ?? 0),
+    0
+  )
+
+  const metrics: Array<{ label: string; value: string; href?: string }> = [
+    {
+      label: "На согласовании",
+      value: `${onApproval.length}${urgentCount ? ` · ${urgentCount} срочных` : ""}`,
+    },
+    { label: "К оплате за 7 дней", value: fmtRub(sum7DaysRub) },
+    {
+      label: "Красные флаги",
+      value: redFlags.length
+        ? `${redFlags.length} · ${fmtRub(redFlagsSumRub)}`
+        : "нет",
+      href: "/requests?problems=1",
+    },
+    {
+      label: "Остаток группы",
+      value: accountBalances.length ? fmtRub(groupBalanceRub) : "нет данных",
+    },
+  ]
+
+  const accounts: AccountRow[] = accountBalances.map((b) => ({
+    accountUid: b.accountUid,
+    label: `${b.orgName} · ${b.accountName}`,
+    currency: b.currency,
+    balanceMinorNum: Number(b.balanceMinor),
+    balanceRubNum: toRub(b.balanceMinor, b.currency, rates) ?? 0,
+  }))
+  const fundCards: FundCardRow[] = fundSnapshots.map((f) => ({
+    name: f.name,
+    planText: formatMoneyBig(f.planWeekMinor),
+    factText: formatMoneyBig(f.factWeekMinor),
+    balanceText: formatMoneyBig(f.balanceMinor),
+    negative: f.balanceMinor < 0n,
+    href: buildQuery(sp, { fund: f.name }),
+  }))
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-8">
@@ -182,6 +265,26 @@ export default async function RequestsPage({
             </Button>
           </form>
         </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <Card key={m.label}>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground">{m.label}</p>
+              {m.href ? (
+                <Link
+                  href={m.href}
+                  className="text-lg font-semibold underline-offset-4 hover:underline"
+                >
+                  {m.value}
+                </Link>
+              ) : (
+                <p className="text-lg font-semibold">{m.value}</p>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -280,7 +383,7 @@ export default async function RequestsPage({
         </Link>
       </form>
 
-      <RequestsTable rows={rows} />
+      <RequestsTable rows={rows} accounts={accounts} funds={fundCards} />
     </main>
   )
 }

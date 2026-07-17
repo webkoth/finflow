@@ -65,6 +65,34 @@ test("реестр: точки вердикта и фильтр «красные
   await expect(page.getByRole("link", { name: "REQ-0004" })).toHaveCount(0)
 })
 
+test("реестр: метрики и панель остатков с проекцией", async ({ page }) => {
+  await syncFixtureData(page)
+  // .first(): «На согласовании» — ещё и ярлык фильтра статуса, и статус
+  // строк таблицы; метрика — первый по DOM-порядку узел с этим текстом.
+  await expect(page.getByText("На согласовании").first()).toBeVisible()
+  await expect(page.getByText("К оплате за 7 дней")).toBeVisible()
+  await expect(page.getByText("Остаток группы")).toBeVisible()
+
+  await page.getByText("Остатки и фонды").click()
+  // До выбора: Сбербанк ₽ ТОРИ БРЭНДС — 40 000 000 → 40 000 000
+  // Intl ru-RU разделяет разряды неразрывными пробелами → матчим через \s.
+  const toriRow = page.getByRole("row", {
+    name: /ТОРИ БРЭНДС ООО · Сбербанк ₽/,
+  })
+  await expect(toriRow).toContainText(
+    /40\s000\s000,00\s₽\s→\s40\s000\s000,00\s₽/
+  )
+  // Отметили REQ-0004 (25,7 млн со Сбер ₽) → проекция уменьшилась
+  await page.getByLabel("Выбрать REQ-0004").check()
+  await expect(toriRow).toContainText(/→\s14\s300\s000,00\s₽/)
+
+  // Фонд в минусе виден (карточка фонда — ссылка в панели), клик по фонду фильтрует
+  await expect(page.getByRole("link", { name: "Маркетинг" })).toBeVisible()
+  await page.getByRole("link", { name: "Закупки товара" }).click()
+  await expect(page.getByRole("link", { name: "REQ-0004" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "REQ-0007" })).toHaveCount(0)
+})
+
 test("настройки: порог «постоянного» меняет вердикт (и восстанавливается)", async ({
   page,
 }) => {
