@@ -259,6 +259,12 @@ export default async function RequestsPage({
           ) : (
             <span>Данные ещё не загружались</span>
           )}
+          <Link
+            href="/settings/verdict"
+            className="underline underline-offset-4"
+          >
+            Настройки светофора
+          </Link>
           <form action={refreshData}>
             <Button type="submit" variant="outline" size="sm">
               Обновить
