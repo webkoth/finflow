@@ -68,38 +68,82 @@ export function LiquiditySection({
     rub: toRub(b.balanceMinor, b.currency, ctx.rates) ?? 0,
   }))
   const groupRub = rows.reduce((sum, b) => sum + b.rub, 0)
+  // Точка проверки funds считается по юрлицу заявки — итог по группе один
+  // не отражает её. Группируем по orgName: юрлицо заявки первым, остальные
+  // по алфавиту; у каждого — свой подытог, у юрлица заявки — со стрелкой.
+  const orgNames = Array.from(new Set(rows.map((b) => b.orgName)))
+  const otherOrgs = orgNames
+    .filter((o) => o !== request.orgName)
+    .sort((a, b) => a.localeCompare(b, "ru"))
+  const orderedOrgs = orgNames.includes(request.orgName)
+    ? [request.orgName, ...otherOrgs]
+    : otherOrgs
   return (
     <Section title="Ликвидность" verdict={ctx.verdict} checkId="funds">
       <table className="w-full text-sm">
-        <tbody>
-          {rows.map((b) => {
-            const isDebit = b.accountUid === request.debitAccountUid
-            const after =
-              isDebit && b.currency === request.currency
-                ? b.balanceMinor - request.amountMinor
-                : null
-            return (
-              <tr key={b.accountUid} className={isDebit ? "font-medium" : ""}>
-                <td className="py-1">
-                  {b.orgName} · {b.accountName}
-                  {isDebit && (
-                    <Badge variant="outline" className="ml-2">
-                      счёт списания
-                    </Badge>
-                  )}
+        {orderedOrgs.map((orgName) => {
+          const orgRows = rows.filter((b) => b.orgName === orgName)
+          const orgRub = orgRows.reduce((sum, b) => sum + b.rub, 0)
+          const isRequestOrg = orgName === request.orgName
+          const orgAfterRub =
+            isRequestOrg && amountRub !== null ? orgRub - amountRub : null
+          return (
+            <tbody key={orgName}>
+              {orgRows.map((b) => {
+                const isDebit = b.accountUid === request.debitAccountUid
+                const after =
+                  isDebit && b.currency === request.currency
+                    ? b.balanceMinor - request.amountMinor
+                    : null
+                return (
+                  <tr
+                    key={b.accountUid}
+                    className={isDebit ? "font-medium" : ""}
+                  >
+                    <td className="py-1">
+                      {b.orgName} · {b.accountName}
+                      {isDebit && (
+                        <Badge variant="outline" className="ml-2">
+                          счёт списания
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="py-1 text-right">
+                      {formatMoneyBig(b.balanceMinor, b.currency)}
+                      {after !== null && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          → {formatMoneyBig(after, b.currency)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              <tr className="border-t">
+                <td className="py-1 text-muted-foreground">
+                  Итого {orgName}, ₽ экв.
                 </td>
                 <td className="py-1 text-right">
-                  {formatMoneyBig(b.balanceMinor, b.currency)}
-                  {after !== null && (
-                    <span className="text-muted-foreground">
+                  {fmtRub(orgRub)}
+                  {orgAfterRub !== null && (
+                    <span
+                      className={
+                        orgAfterRub < 0
+                          ? "text-red-600"
+                          : "text-muted-foreground"
+                      }
+                    >
                       {" "}
-                      → {formatMoneyBig(after, b.currency)}
+                      → {fmtRub(orgAfterRub)}
                     </span>
                   )}
                 </td>
               </tr>
-            )
-          })}
+            </tbody>
+          )
+        })}
+        <tbody>
           <tr className="border-t font-medium">
             <td className="py-1">Группа, ₽ экв.</td>
             <td className="py-1 text-right">
@@ -223,13 +267,16 @@ export function OrderSection({
   ctx: RequestContext
 }) {
   const { order, contract } = ctx
-  // Процент — в валюте заказа (в данных 1С валюта заявки совпадает с валютой
-  // заказа); точный мультивалютный расчёт делает checkOrderContract в домене.
+  const amountRub = toRub(request.amountMinor, request.currency, ctx.rates)
+  const orderRub = order
+    ? toRub(order.amountMinor, order.currency, ctx.rates)
+    : null
+  const paidRub = order
+    ? toRub(order.paidMinor, order.currency, ctx.rates)
+    : null
   const percent =
-    order && order.amountMinor > 0n
-      ? Number(
-          ((order.paidMinor + request.amountMinor) * 100n) / order.amountMinor
-        )
+    orderRub !== null && orderRub > 0 && paidRub !== null && amountRub !== null
+      ? ((paidRub + amountRub) / orderRub) * 100
       : null
   return (
     <Section
@@ -253,7 +300,8 @@ export function OrderSection({
             </p>
             <p>
               Оплачено ранее: {formatMoneyBig(order.paidMinor, order.currency)}{" "}
-              · с этим платежом: {percent !== null ? `${percent}%` : "—"}
+              · с этим платежом:{" "}
+              {percent !== null ? `${percent.toFixed(0)}%` : "—"}
             </p>
             {percent !== null && (
               <div className="h-2 w-full overflow-hidden rounded bg-muted">
