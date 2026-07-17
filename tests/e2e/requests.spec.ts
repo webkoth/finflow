@@ -24,7 +24,12 @@ test("карточка: исполненная заявка показывает
     page.getByRole("heading", { name: "Заявка REQ-0001" })
   ).toBeVisible()
   await expect(page.getByText("Исполнена: списание")).toBeVisible()
-  await expect(page.getByText("Сбербанк")).toBeVisible()
+  // exact: true — с секцией «Ликвидность» (задача 9) на карточке появились
+  // и другие остатки с «Сбербанк ₽» в названии счёта; тут проверяем именно
+  // банк списания в таблице исполнения.
+  await expect(
+    page.getByRole("cell", { name: "Сбербанк", exact: true })
+  ).toBeVisible()
 })
 
 test("карточка: несуществующий uid отдаёт 404", async ({ page }) => {
