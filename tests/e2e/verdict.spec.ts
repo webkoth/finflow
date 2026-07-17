@@ -6,6 +6,18 @@ import { syncFixtureData } from "./helpers"
 
 test.describe.configure({ mode: "serial" })
 
+test.afterAll(async ({ browser, baseURL }) => {
+  // Страховка: вернуть порог по умолчанию, даже если тест настроек упал
+  // посреди — иначе он останется в общей dev-БД и уронит другие прогоны.
+  // baseURL передаём явно: newPage() не наследует use.baseURL из конфига.
+  const page = await browser.newPage({ baseURL })
+  await page.goto("/settings/verdict")
+  await page.getByLabel("«Постоянный контрагент» от, платежей").fill("3")
+  await page.getByRole("button", { name: "Сохранить" }).click()
+  await expect(page.getByText("Сохранено")).toBeVisible()
+  await page.close()
+})
+
 test("карточка REQ-0004: вердикт «Можно согласовать» и секции контекста", async ({
   page,
 }) => {

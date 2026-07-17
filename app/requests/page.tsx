@@ -69,7 +69,7 @@ export default async function RequestsPage({
   const from = validDate(param(sp, "from"))
   const to = validDate(param(sp, "to"))
   const partner = param(sp, "partner")
-  const problems = param(sp, "problems")
+  const problems = param(sp, "problems") === "1"
 
   const where: Prisma.PaymentRequestWhereInput = {
     isDeletedIn1c: false,
@@ -119,9 +119,7 @@ export default async function RequestsPage({
   ])
 
   // Вердикт нужен только заявкам на согласовании (решение ещё не принято).
-  const onApproval = requests.filter(
-    (r) => r.approvalStatus === "on_approval" && !r.isDeletedIn1c
-  )
+  const onApproval = requests.filter((r) => r.approvalStatus === "on_approval")
   const { verdicts } = await computeVerdicts(onApproval)
 
   const visible = problems
@@ -257,7 +255,7 @@ export default async function RequestsPage({
             type="checkbox"
             name="problems"
             value="1"
-            defaultChecked={problems === "1"}
+            defaultChecked={problems}
             className="size-4 accent-primary"
           />
           Только красные флаги
