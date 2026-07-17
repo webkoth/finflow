@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useActionState, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Table,
   TableBody,
@@ -96,20 +97,7 @@ export function RequestsTable({
     groupRub - selectedRows.reduce((sum, r) => sum + r.amountRubNum, 0)
 
   return (
-    <form
-      action={formAction}
-      className="space-y-3"
-      onChange={(e) => {
-        const t = e.target as unknown as HTMLInputElement
-        if (t.name !== "uids") return
-        setSelected((prev) => {
-          const next = new Set(prev)
-          if (t.checked) next.add(t.value)
-          else next.delete(t.value)
-          return next
-        })
-      }}
-    >
+    <form action={formAction} className="space-y-3">
       {(accounts.length > 0 || funds.length > 0) && (
         <details className="rounded-md border">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">
@@ -216,17 +204,22 @@ export function RequestsTable({
             <TableRow key={r.uid}>
               <TableCell>
                 {r.canSelect ? (
-                  // Нативный checkbox: сабмитится формой без JS-состояния
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     name="uids"
                     value={r.uid}
                     aria-label={`Выбрать ${r.number}`}
-                    className="size-4 accent-primary"
                     // Неуправляемый чекбокс ремоунтится при смене фильтра/
                     // revalidate — defaultChecked восстанавливает визуальный
                     // state из selected, чтобы он не разошёлся с проекцией.
                     defaultChecked={selected.has(r.uid)}
+                    onCheckedChange={(checked) => {
+                      setSelected((prev) => {
+                        const next = new Set(prev)
+                        if (checked) next.add(r.uid)
+                        else next.delete(r.uid)
+                        return next
+                      })
+                    }}
                   />
                 ) : r.verdictLevel && r.verdictLevel !== "ok" ? (
                   <span

@@ -6,7 +6,9 @@ import { toRub } from "@/lib/domain/verdict"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
 import {
   RequestsTable,
@@ -359,16 +361,17 @@ export default async function RequestsPage({
             ))}
           </select>
         </div>
-        <label className="flex h-9 items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
+        <div className="flex h-9 items-center gap-2">
+          <Checkbox
+            id="problems"
             name="problems"
             value="1"
             defaultChecked={problems}
-            className="size-4 accent-primary"
           />
-          Только красные флаги
-        </label>
+          <Label htmlFor="problems" className="text-sm font-medium">
+            Только красные флаги
+          </Label>
+        </div>
         <div className="grid gap-1.5">
           <label htmlFor="from" className="text-sm font-medium">
             Оплата с
