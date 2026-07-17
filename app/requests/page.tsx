@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
 import { RequestsTable, type RequestRow } from "./requests-table"
-import { STATUS_CLASSES, STATUS_LABELS } from "./status"
+import { STATUS_CLASSES, STATUS_LABELS, VERDICT_DOT_CLASSES } from "./status"
 import { refreshData } from "./actions"
+import { computeVerdicts } from "@/lib/verdicts"
+import type { VerdictLevel } from "@/lib/domain/verdict"
 
 export const dynamic = "force-dynamic"
 
@@ -38,7 +40,15 @@ function validDate(value: string): string {
 
 function buildQuery(sp: Search, overrides: Record<string, string>): string {
   const q = new URLSearchParams()
-  for (const key of ["status", "org", "fund", "from", "to"]) {
+  for (const key of [
+    "status",
+    "org",
+    "fund",
+    "from",
+    "to",
+    "partner",
+    "problems",
+  ]) {
     const value = key in overrides ? overrides[key] : param(sp, key)
     if (value) q.set(key, value)
   }
@@ -58,12 +68,15 @@ export default async function RequestsPage({
   const fund = param(sp, "fund")
   const from = validDate(param(sp, "from"))
   const to = validDate(param(sp, "to"))
+  const partner = param(sp, "partner")
+  const problems = param(sp, "problems")
 
   const where: Prisma.PaymentRequestWhereInput = {
     isDeletedIn1c: false,
     ...(status ? { executionStatus: status as ExecutionStatus } : {}),
     ...(org ? { orgName: org } : {}),
     ...(fund ? { fund } : {}),
+    ...(partner ? { partnerName: partner } : {}),
     ...(from || to
       ? {
           // Обе границы диапазона — по московской полуночи.
@@ -75,7 +88,7 @@ export default async function RequestsPage({
       : {}),
   }
 
-  const [requests, lastSync, orgs, funds] = await Promise.all([
+  const [requests, lastSync, orgs, funds, partners] = await Promise.all([
     prisma.paymentRequest.findMany({
       where,
       orderBy: { payDate: "desc" },
@@ -97,23 +110,51 @@ export default async function RequestsPage({
       select: { fund: true },
       orderBy: { fund: "asc" },
     }),
+    prisma.paymentRequest.findMany({
+      where: { isDeletedIn1c: false, partnerName: { not: null } },
+      distinct: ["partnerName"],
+      select: { partnerName: true },
+      orderBy: { partnerName: "asc" },
+    }),
   ])
 
-  const rows: RequestRow[] = requests.map((r) => ({
-    uid: r.uid,
-    number: r.number,
-    urgent: r.importance === 1,
-    orgName: r.orgName,
-    partnerName: r.partnerName ?? "",
-    fund: r.fund ?? "",
-    payDateText: formatDate(r.payDate),
-    amountText: formatMoneyBig(r.amountMinor, r.currency),
-    statusLabel: STATUS_LABELS[r.executionStatus],
-    statusClass: STATUS_CLASSES[r.executionStatus],
-    hasExplanation:
-      r.executionStatus === "overdue" && r._count.executionComments > 0,
-    canSelect: r.approvalStatus === "on_approval",
-  }))
+  // Вердикт нужен только заявкам на согласовании (решение ещё не принято).
+  const onApproval = requests.filter(
+    (r) => r.approvalStatus === "on_approval" && !r.isDeletedIn1c
+  )
+  const { verdicts } = await computeVerdicts(onApproval)
+
+  const visible = problems
+    ? requests.filter((r) => verdicts.get(r.uid)?.level === "bad")
+    : requests
+
+  const rows: RequestRow[] = visible.map((r) => {
+    const verdict = verdicts.get(r.uid) ?? null
+    return {
+      uid: r.uid,
+      number: r.number,
+      urgent: r.importance === 1,
+      orgName: r.orgName,
+      partnerName: r.partnerName ?? "",
+      fund: r.fund ?? "",
+      payDateText: formatDate(r.payDate),
+      amountText: formatMoneyBig(r.amountMinor, r.currency),
+      statusLabel: STATUS_LABELS[r.executionStatus],
+      statusClass: STATUS_CLASSES[r.executionStatus],
+      hasExplanation:
+        r.executionStatus === "overdue" && r._count.executionComments > 0,
+      verdictLevel: (verdict?.level ?? null) as Exclude<
+        VerdictLevel,
+        "block"
+      > | null,
+      verdictTitle: verdict?.title ?? "",
+      verdictDotClass: verdict
+        ? VERDICT_DOT_CLASSES[verdict.level as Exclude<VerdictLevel, "block">]
+        : "",
+      // Массово — только 🟢 (ТЗ §6.4): чекбокс есть только у зелёных.
+      canSelect: r.approvalStatus === "on_approval" && verdict?.level === "ok",
+    }
+  })
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-8">
@@ -193,6 +234,34 @@ export default async function RequestsPage({
             ))}
           </select>
         </div>
+        <div className="grid gap-1.5">
+          <label htmlFor="partner" className="text-sm font-medium">
+            Контрагент
+          </label>
+          <select
+            id="partner"
+            name="partner"
+            defaultValue={partner}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Все</option>
+            {partners.map((p) => (
+              <option key={p.partnerName} value={p.partnerName ?? ""}>
+                {p.partnerName}
+              </option>
+            ))}
+          </select>
+        </div>
+        <label className="flex h-9 items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            name="problems"
+            value="1"
+            defaultChecked={problems === "1"}
+            className="size-4 accent-primary"
+          />
+          Только красные флаги
+        </label>
         <div className="grid gap-1.5">
           <label htmlFor="from" className="text-sm font-medium">
             Оплата с

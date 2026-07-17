@@ -26,7 +26,10 @@ export type RequestRow = {
   statusLabel: string
   statusClass: string
   hasExplanation: boolean
-  canSelect: boolean // approvalStatus === on_approval
+  verdictLevel: "ok" | "warn" | "bad" | null
+  verdictTitle: string
+  verdictDotClass: string
+  canSelect: boolean // approvalStatus === on_approval && verdict === ok
 }
 
 const initialState: FormState = { error: null }
@@ -44,6 +47,7 @@ export function RequestsTable({ rows }: { rows: RequestRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-8"></TableHead>
+            <TableHead className="w-10">Светофор</TableHead>
             <TableHead>Номер</TableHead>
             <TableHead>Юрлицо</TableHead>
             <TableHead>Контрагент</TableHead>
@@ -56,7 +60,7 @@ export function RequestsTable({ rows }: { rows: RequestRow[] }) {
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="text-muted-foreground">
+              <TableCell colSpan={9} className="text-muted-foreground">
                 Заявок нет. Нажмите «Обновить», чтобы загрузить данные.
               </TableCell>
             </TableRow>
@@ -64,7 +68,7 @@ export function RequestsTable({ rows }: { rows: RequestRow[] }) {
           {rows.map((r) => (
             <TableRow key={r.uid}>
               <TableCell>
-                {r.canSelect && (
+                {r.canSelect ? (
                   // Нативный checkbox: сабмитится формой без JS-состояния
                   <input
                     type="checkbox"
@@ -72,6 +76,22 @@ export function RequestsTable({ rows }: { rows: RequestRow[] }) {
                     value={r.uid}
                     aria-label={`Выбрать ${r.number}`}
                     className="size-4 accent-primary"
+                  />
+                ) : r.verdictLevel && r.verdictLevel !== "ok" ? (
+                  <span
+                    className="cursor-not-allowed text-xs text-muted-foreground"
+                    title="Только через карточку: вердикт не зелёный"
+                  >
+                    —
+                  </span>
+                ) : null}
+              </TableCell>
+              <TableCell>
+                {r.verdictLevel && (
+                  <span
+                    className={`inline-block size-3 rounded-full ${r.verdictDotClass}`}
+                    title={r.verdictTitle}
+                    aria-label={`Вердикт: ${r.verdictTitle}`}
                   />
                 )}
               </TableCell>
@@ -112,7 +132,9 @@ export function RequestsTable({ rows }: { rows: RequestRow[] }) {
       {selectable.length > 0 && (
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Отправляю в 1С…" : "Согласовать выбранные"}
+            {isPending
+              ? "Отправляю в 1С…"
+              : "Согласовать выбранные (только 🟢)"}
           </Button>
           {state.error && (
             <p className="text-sm text-destructive">{state.error}</p>
