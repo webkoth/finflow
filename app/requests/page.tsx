@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
 import {
   RequestsTable,
@@ -361,17 +361,15 @@ export default async function RequestsPage({
             ))}
           </select>
         </div>
-        <div className="flex h-9 items-center gap-2">
+        <Field orientation="horizontal" className="h-9 w-auto">
           <Checkbox
             id="problems"
             name="problems"
             value="1"
             defaultChecked={problems}
           />
-          <Label htmlFor="problems" className="text-sm font-medium">
-            Только красные флаги
-          </Label>
-        </div>
+          <FieldLabel htmlFor="problems">Только красные флаги</FieldLabel>
+        </Field>
         <div className="grid gap-1.5">
           <label htmlFor="from" className="text-sm font-medium">
             Оплата с

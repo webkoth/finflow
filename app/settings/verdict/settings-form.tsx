@@ -4,6 +4,7 @@
 import { useActionState } from "react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { saveVerdictSettings, type FormState } from "./actions"
@@ -47,21 +48,20 @@ export function SettingsForm({
 
       <div className="space-y-3">
         <h2 className="text-lg font-medium">Учитывать в вердикте</h2>
-        {checks.map((c) => (
-          <div key={c.checkId} className="flex items-center gap-2">
-            <Checkbox
-              id={`include_${c.checkId}`}
-              name={`include_${c.checkId}`}
-              defaultChecked={c.include}
-            />
-            <Label
-              htmlFor={`include_${c.checkId}`}
-              className="text-sm font-normal"
-            >
-              {c.label}
-            </Label>
-          </div>
-        ))}
+        <FieldGroup>
+          {checks.map((c) => (
+            <Field key={c.checkId} orientation="horizontal">
+              <Checkbox
+                id={`include_${c.checkId}`}
+                name={`include_${c.checkId}`}
+                defaultChecked={c.include}
+              />
+              <FieldLabel htmlFor={`include_${c.checkId}`}>
+                {c.label}
+              </FieldLabel>
+            </Field>
+          ))}
+        </FieldGroup>
       </div>
 
       <Button type="submit" disabled={isPending}>
