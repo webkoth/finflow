@@ -6,10 +6,8 @@ import { toRub } from "@/lib/domain/verdict"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
 import type { ExecutionStatus, Prisma } from "@prisma/client"
+import { FiltersForm } from "./filters-form"
 import {
   RequestsTable,
   type AccountRow,
@@ -305,90 +303,20 @@ export default async function RequestsPage({
         ))}
       </div>
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        {status && <input type="hidden" name="status" value={status} />}
-        <div className="grid gap-1.5">
-          <label htmlFor="org" className="text-sm font-medium">
-            Юрлицо
-          </label>
-          <select
-            id="org"
-            name="org"
-            defaultValue={org}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Все</option>
-            {orgs.map((o) => (
-              <option key={o.orgName} value={o.orgName}>
-                {o.orgName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <label htmlFor="fund" className="text-sm font-medium">
-            Фонд
-          </label>
-          <select
-            id="fund"
-            name="fund"
-            defaultValue={fund}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Все</option>
-            {funds.map((f) => (
-              <option key={f.fund} value={f.fund ?? ""}>
-                {f.fund}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <label htmlFor="partner" className="text-sm font-medium">
-            Контрагент
-          </label>
-          <select
-            id="partner"
-            name="partner"
-            defaultValue={partner}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            <option value="">Все</option>
-            {partners.map((p) => (
-              <option key={p.partnerName} value={p.partnerName ?? ""}>
-                {p.partnerName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Field orientation="horizontal" className="h-9 w-auto">
-          <Checkbox
-            id="problems"
-            name="problems"
-            value="1"
-            defaultChecked={problems}
-          />
-          <FieldLabel htmlFor="problems">Только красные флаги</FieldLabel>
-        </Field>
-        <div className="grid gap-1.5">
-          <label htmlFor="from" className="text-sm font-medium">
-            Оплата с
-          </label>
-          <Input id="from" name="from" type="date" defaultValue={from} />
-        </div>
-        <div className="grid gap-1.5">
-          <label htmlFor="to" className="text-sm font-medium">
-            по
-          </label>
-          <Input id="to" name="to" type="date" defaultValue={to} />
-        </div>
-        <Button type="submit" variant="secondary">
-          Применить
-        </Button>
-        <Link href="/requests" className="text-sm underline underline-offset-4">
-          Сбросить
-        </Link>
-      </form>
+      <FiltersForm
+        status={status}
+        org={org}
+        fund={fund}
+        partner={partner}
+        from={from}
+        to={to}
+        problems={problems}
+        orgs={orgs.map((o) => o.orgName)}
+        funds={funds.flatMap((f) => (f.fund ? [f.fund] : []))}
+        partners={partners.flatMap((p) =>
+          p.partnerName ? [p.partnerName] : []
+        )}
+      />
 
       <RequestsTable rows={rows} accounts={accounts} funds={fundCards} />
     </main>
