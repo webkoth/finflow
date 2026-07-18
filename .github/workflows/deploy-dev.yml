@@ -36,6 +36,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npx prisma migrate deploy
+      # e2e авторизации требует сид-пользователей (loginAs → e2e-owner и др.).
+      # Демо-пользователи создаются только при NODE_ENV != production (не задан здесь).
+      - run: npx prisma db seed
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
