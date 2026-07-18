@@ -14,6 +14,7 @@ const MATRIX: Array<[Action, Record<Role, boolean>]> = [
   ],
   ["manage_users", { owner: true, accountant: false, viewer: false }],
   ["refresh_data", { owner: true, accountant: true, viewer: true }],
+  ["manage_reference", { owner: true, accountant: true, viewer: false }],
 ]
 
 describe("can", () => {

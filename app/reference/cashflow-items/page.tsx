@@ -1,5 +1,6 @@
 import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
+import { can, type Role } from "@/lib/domain/permissions"
 import { ArticleDictionary } from "@/components/reference/article-dictionary"
 import { createArticle, setArticleActive, updateArticle } from "./actions"
 
@@ -11,7 +12,8 @@ export default async function Page({
 }: {
   searchParams: Promise<{ archived?: string; edit?: string }>
 }) {
-  await requirePageUser()
+  const user = await requirePageUser()
+  const canManage = can(user.role as Role, "manage_reference")
 
   const sp = await searchParams
   const showArchived = sp.archived === "1"
@@ -52,6 +54,7 @@ export default async function Page({
         createAction={createArticle}
         updateAction={updateArticle}
         setActiveAction={setArticleActive}
+        canManage={canManage}
       />
     </main>
   )

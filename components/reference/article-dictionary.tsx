@@ -38,6 +38,7 @@ export function ArticleDictionary({
   createAction,
   updateAction,
   setActiveAction,
+  canManage,
 }: {
   kind: Kind
   articles: Row[]
@@ -47,6 +48,7 @@ export function ArticleDictionary({
   createAction: (p: FormState, fd: FormData) => Promise<FormState>
   updateAction: (p: FormState, fd: FormData) => Promise<FormState>
   setActiveAction: (fd: FormData) => Promise<void>
+  canManage: boolean
 }) {
   const nodes: ArticleNode[] = articles.map((a) => ({
     id: a.id,
@@ -65,13 +67,15 @@ export function ArticleDictionary({
 
   return (
     <div className="space-y-6">
-      <ArticleForm
-        kind={kind}
-        action={editing ? updateAction : createAction}
-        groups={groups}
-        editing={editing}
-        cancelHref={basePath + (showArchived ? "?archived=1" : "")}
-      />
+      {canManage && (
+        <ArticleForm
+          kind={kind}
+          action={editing ? updateAction : createAction}
+          groups={groups}
+          editing={editing}
+          cancelHref={basePath + (showArchived ? "?archived=1" : "")}
+        />
+      )}
 
       <div className="flex justify-end">
         <Link
@@ -88,7 +92,9 @@ export function ArticleDictionary({
             <TableHead>Наименование</TableHead>
             <TableHead>Код</TableHead>
             <TableHead>Тип</TableHead>
-            <TableHead className="text-right">Действия</TableHead>
+            {canManage && (
+              <TableHead className="text-right">Действия</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -122,30 +128,32 @@ export function ArticleDictionary({
                     <Badge variant="secondary">{labels[r.flow]}</Badge>
                   ) : null}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Link
-                      href={`${basePath}?edit=${r.id}${showArchived ? "&archived=1" : ""}`}
-                      className={buttonVariants({
-                        variant: "ghost",
-                        size: "sm",
-                      })}
-                    >
-                      Изменить
-                    </Link>
-                    <form action={setActiveAction}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <input
-                        type="hidden"
-                        name="active"
-                        value={active ? "" : "1"}
-                      />
-                      <Button variant="ghost" size="sm" type="submit">
-                        {active ? "В архив" : "Вернуть"}
-                      </Button>
-                    </form>
-                  </div>
-                </TableCell>
+                {canManage && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`${basePath}?edit=${r.id}${showArchived ? "&archived=1" : ""}`}
+                        className={buttonVariants({
+                          variant: "ghost",
+                          size: "sm",
+                        })}
+                      >
+                        Изменить
+                      </Link>
+                      <form action={setActiveAction}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input
+                          type="hidden"
+                          name="active"
+                          value={active ? "" : "1"}
+                        />
+                        <Button variant="ghost" size="sm" type="submit">
+                          {active ? "В архив" : "Вернуть"}
+                        </Button>
+                      </form>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             )
           })}

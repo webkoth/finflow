@@ -11,6 +11,7 @@ const ALL_ACTIONS = [
   "manage_verdict_settings", // настройки светофора
   "manage_users", // страница пользователей
   "refresh_data", // кнопка «Обновить» (ручной синк)
+  "manage_reference", // справочники (статьи ДДС/БДР, счета) и транзакции
 ] as const
 
 export type Action = (typeof ALL_ACTIONS)[number]
@@ -28,6 +29,7 @@ const MATRIX: Record<Role, ReadonlySet<Action>> = {
     "manage_cash_flow_items",
     "confirm_dispatch",
     "refresh_data",
+    "manage_reference",
   ]),
   viewer: new Set(["refresh_data"]),
 }

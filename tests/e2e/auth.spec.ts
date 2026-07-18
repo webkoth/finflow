@@ -121,6 +121,18 @@ test("не-owner получает 404 на настройках светофор
   expect(response?.status()).toBe(404)
 })
 
+test("viewer видит справочники, но без форм редактирования", async ({
+  page,
+}) => {
+  await loginAs(page, "viewer")
+  await page.goto("/reference/cashflow-items")
+  // Данные видны (заголовок раздела)
+  await expect(page.getByRole("heading", { name: "Статьи ДДС" })).toBeVisible()
+  // Формы/кнопки создания и правки нет
+  await expect(page.getByRole("button", { name: "Добавить" })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: "Изменить" })).toHaveCount(0)
+})
+
 test("смена пароля: старый перестаёт работать, новый работает", async ({
   page,
   browser,

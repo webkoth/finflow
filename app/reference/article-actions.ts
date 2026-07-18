@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache"
+import { requireAction } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import {
   validateArticleInput,
@@ -49,6 +50,8 @@ export async function createArticleAction(
   _prev: ArticleFormState,
   fd: FormData
 ): Promise<ArticleFormState> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return { error: auth.error }
   const input = parseArticleForm(fd)
   const err = validateArticleInput(input, await loadNodes(kind))
   if (err) return { error: err }
@@ -73,6 +76,8 @@ export async function updateArticleAction(
   _prev: ArticleFormState,
   fd: FormData
 ): Promise<ArticleFormState> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return { error: auth.error }
   const id = str(fd, "id")
   if (!id) return { error: "Не указан идентификатор статьи" }
   const input = parseArticleForm(fd)
@@ -97,6 +102,8 @@ export async function setArticleActiveAction(
   path: string,
   fd: FormData
 ): Promise<void> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return
   const id = str(fd, "id")
   const active = str(fd, "active") === "1"
   if (!id) return
