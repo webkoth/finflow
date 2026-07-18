@@ -16,6 +16,19 @@ const GENERIC_ERROR = "Неверный логин или пароль"
 // прогоняем scrypt, иначе по скорости ответа можно перечислять логины.
 const DUMMY_HASH = hashPassword("timing-equalizer-dummy")
 
+// Защита от open redirect: разрешаем только пути своего origin.
+// Префикс-проверки обходятся бэкслешем ("/\\evil.com" → http://evil.com).
+function safeInternalPath(raw: string): string {
+  try {
+    const u = new URL(raw, "http://internal.invalid")
+    return u.origin === "http://internal.invalid"
+      ? u.pathname + u.search + u.hash
+      : "/"
+  } catch {
+    return "/"
+  }
+}
+
 // Ленивый bootstrap первого собственника (спека §5): таблица пуста
 // и пара совпала с APP_BOOTSTRAP_LOGIN/PASSWORD → создаём owner.
 async function bootstrapOwner(
@@ -59,17 +72,13 @@ export async function login(
       verifyPassword(password, DUMMY_HASH) // выравнивание тайминга
       return { error: GENERIC_ERROR }
     }
-  } else if (!user.isActive || !verifyPassword(password, user.passwordHash)) {
-    return { error: GENERIC_ERROR }
+  } else {
+    const ok = verifyPassword(password, user.passwordHash) // scrypt всегда
+    if (!user.isActive || !ok) return { error: GENERIC_ERROR }
   }
 
   await startSession(user.id)
-  // Защита от open redirect: только внутренние пути.
-  redirect(
-    callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
-      ? callbackUrl
-      : "/"
-  )
+  redirect(safeInternalPath(callbackUrl))
 }
 
 export async function logout(): Promise<void> {
