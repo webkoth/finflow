@@ -180,7 +180,7 @@ export function FiltersForm({
         defaultValue={partner}
         options={partners}
       />
-      <Field orientation="horizontal" className="h-9 w-auto">
+      <Field orientation="horizontal" className="h-7 w-auto">
         <Checkbox
           id="problems"
           name="problems"
