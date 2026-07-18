@@ -6,6 +6,7 @@ import { computeExecutionStatus } from "@/lib/domain/execution-status"
 import { getDwhGateway } from "@/lib/integrations/dwh"
 import { approveBids } from "@/lib/integrations/one-c"
 import { runSync } from "@/lib/sync/run-sync"
+import { computeVerdicts } from "@/lib/verdicts"
 
 // Ручной запуск синка кнопкой «Обновить». Ошибки синка не бросаются —
 // они журналируются в SyncRun и видны в строке свежести данных.
@@ -33,6 +34,17 @@ export async function bulkApproveRequests(
   })
   if (requests.length === 0)
     return { error: "Среди выбранных нет заявок на согласовании" }
+
+  // Клиент мог подделать форму (чекбоксы есть только у 🟢) — перепроверяем
+  // вердикт на сервере (ТЗ §6.4).
+  const { verdicts } = await computeVerdicts(requests)
+  const notGreen = requests.filter((r) => verdicts.get(r.uid)?.level !== "ok")
+  if (notGreen.length > 0)
+    return {
+      error: `Массово можно согласовать только зелёные заявки. Через карточку: ${notGreen
+        .map((r) => r.number)
+        .join(", ")}`,
+    }
 
   const res = await approveBids(requests.map((r) => r.uid))
   if (!res.ok) return { error: res.error }

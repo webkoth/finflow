@@ -72,6 +72,40 @@ async function main() {
   const count = await prisma.transaction.count()
   console.log(`Seed: создано ${count} транзакций`)
 
+  // Настройки светофора: дефолты из домена.
+  const verdictThresholds: Array<{ key: string; value: number }> = [
+    { key: "fundDeficitPercent", value: 20 },
+    { key: "oldPartnerMonths", value: 12 },
+    { key: "minOperationsForConstant", value: 3 },
+  ]
+  for (const t of verdictThresholds) {
+    await prisma.verdictThreshold.upsert({
+      where: { key: t.key },
+      update: {},
+      create: t,
+    })
+  }
+  const verdictCheckDefaults: Array<{
+    checkId: string
+    includeInVerdict: boolean
+  }> = [
+    { checkId: "funds", includeInVerdict: true },
+    { checkId: "fund_balance", includeInVerdict: true },
+    { checkId: "finplan", includeInVerdict: false },
+    { checkId: "document", includeInVerdict: true },
+    { checkId: "order_contract", includeInVerdict: true },
+    { checkId: "partner", includeInVerdict: true },
+    { checkId: "preapproved", includeInVerdict: false },
+  ]
+  for (const c of verdictCheckDefaults) {
+    await prisma.verdictCheckSetting.upsert({
+      where: { checkId: c.checkId },
+      update: {},
+      create: c,
+    })
+  }
+  console.log("Seed: настройки светофора")
+
   // --- Справочники ---
   await prisma.article.deleteMany()
   await prisma.bankAccount.deleteMany()
