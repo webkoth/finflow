@@ -12,7 +12,10 @@ export default async function UsersPage() {
   const user = await getCurrentUser()
   if (!user || !can(user.role as Role, "manage_users")) notFound()
 
-  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } })
+  const users = await prisma.user.findMany({
+    omit: { passwordHash: true },
+    orderBy: { createdAt: "asc" },
+  })
   const rows: UserRow[] = users.map((u) => ({
     id: u.id,
     login: u.login,
