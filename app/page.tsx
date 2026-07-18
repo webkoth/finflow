@@ -24,6 +24,14 @@ export default function Page() {
             Заявки на оплату
           </Link>
         </div>
+        <div>
+          <Link
+            href="/reference"
+            className="text-primary underline underline-offset-4"
+          >
+            Справочники
+          </Link>
+        </div>
       </div>
     </div>
   )
