@@ -19,6 +19,12 @@ export async function AppHeader() {
       <div className="flex items-center gap-3 text-sm">
         <span>{user.name}</span>
         <Badge variant="outline">{ROLE_LABELS[user.role as Role]}</Badge>
+        <Link
+          href="/settings/password"
+          className="text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Сменить пароль
+        </Link>
         <form action={logout}>
           <Button type="submit" variant="ghost" size="sm">
             Выйти

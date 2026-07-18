@@ -59,3 +59,47 @@ test("не-owner не видит страницу пользователей (40
   const response = await page.goto("/settings/users")
   expect(response?.status()).toBe(404)
 })
+
+test("смена пароля: старый перестаёт работать, новый работает", async ({
+  page,
+  browser,
+}) => {
+  await loginAs(page, "owner")
+  await page.goto("/settings/users")
+  const login = `e2e-pwd-${Date.now()}`
+  await page.getByLabel("Логин", { exact: true }).fill(login)
+  await page.getByLabel("Имя").fill("Смена Пароля")
+  await page.getByLabel("Временный пароль").fill("old-password-1")
+  await page.getByRole("button", { name: "Создать" }).click()
+  await expect(page.getByText(login)).toBeVisible()
+
+  const ctx = await browser.newContext()
+  const p2 = await ctx.newPage()
+  await p2.goto("/login")
+  await p2.getByLabel("Логин").fill(login)
+  await p2.getByLabel("Пароль").fill("old-password-1")
+  await p2.getByRole("button", { name: "Войти" }).click()
+  // Ждём завершения редиректа после логина — иначе goto ниже может
+  // выполниться до того, как server action выставит cookie сессии.
+  await expect(p2.getByRole("button", { name: "Выйти" })).toBeVisible()
+  await p2.goto("/settings/password")
+  await p2.getByLabel("Старый пароль").fill("old-password-1")
+  await p2.getByLabel("Новый пароль", { exact: true }).fill("new-password-2")
+  await p2.getByLabel("Новый пароль ещё раз").fill("new-password-2")
+  await p2.getByRole("button", { name: "Сменить пароль" }).click()
+  await expect(p2.getByText("Пароль изменён")).toBeVisible()
+  await p2.getByRole("button", { name: "Выйти" }).click()
+
+  // Старый пароль больше не работает
+  await p2.getByLabel("Логин").fill(login)
+  await p2.getByLabel("Пароль").fill("old-password-1")
+  await p2.getByRole("button", { name: "Войти" }).click()
+  await expect(p2.getByText("Неверный логин или пароль")).toBeVisible()
+  // Новый — работает. Форма логина сбрасывает поля после неудачной
+  // попытки (router.refresh() серверного action) — заполняем заново.
+  await p2.getByLabel("Логин").fill(login)
+  await p2.getByLabel("Пароль").fill("new-password-2")
+  await p2.getByRole("button", { name: "Войти" }).click()
+  await expect(p2.getByText("Смена Пароля")).toBeVisible()
+  await ctx.close()
+})
