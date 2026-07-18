@@ -1,7 +1,6 @@
 // app/dispatch/page.tsx
-import { notFound } from "next/navigation"
 import { prisma } from "@/lib/db"
-import { getCurrentUser } from "@/lib/auth/session"
+import { requirePageUser } from "@/lib/auth/session"
 import { can, type Role } from "@/lib/domain/permissions"
 import { computeDispatchReadiness } from "@/lib/domain/dispatch"
 import { formatDate } from "@/lib/domain/dates"
@@ -24,9 +23,9 @@ import {
 export const dynamic = "force-dynamic"
 
 export default async function DispatchPage() {
-  const user = await getCurrentUser()
-  // Просмотр — всем; действия внутри требуют confirm_dispatch на сервере.
-  if (!user) notFound()
+  // Без сессии — редирект на /login (инвариант session.ts); просмотр —
+  // всем залогиненным, действия внутри требуют confirm_dispatch на сервере.
+  const user = await requirePageUser()
   const canConfirm = can(user.role as Role, "confirm_dispatch")
 
   const [queue, journal] = await Promise.all([
