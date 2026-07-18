@@ -24,6 +24,10 @@ describe("can", () => {
       })
     }
   }
+
+  it("неизвестная роль — запрет, не краш", () => {
+    expect(can("ghost" as Role, "refresh_data")).toBe(false)
+  })
 })
 
 describe("ROLE_LABELS", () => {
