@@ -6,7 +6,7 @@ export type Role = "owner" | "accountant" | "viewer"
 const ALL_ACTIONS = [
   "approve_requests", // согласовать/отклонить (карточка и массово)
   "comment_execution", // комментарии бухгалтера
-  "manage_cash_flow_items", // статьи ДДС (план 05)
+  "manage_cash_flow_items", // контекст отправки платёжек (план 05); CRUD справочников — manage_reference
   "confirm_dispatch", // подтверждение отправки платёжек (план 05)
   "manage_verdict_settings", // настройки светофора
   "manage_users", // страница пользователей
