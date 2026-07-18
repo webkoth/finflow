@@ -141,6 +141,14 @@ async function main() {
   }
   console.log("Seed: настройки светофора")
 
+  // Статья «за товар» для демо и e2e: черновики отправок создаст синк.
+  await prisma.cashFlowItemSetting.upsert({
+    where: { name: "Оплата поставщикам за товар" },
+    update: { isGoods: true },
+    create: { name: "Оплата поставщикам за товар", isGoods: true },
+  })
+  console.log("Seed: статья «Оплата поставщикам за товар» помечена isGoods")
+
   // --- Справочники ---
   await prisma.article.deleteMany()
   await prisma.bankAccount.deleteMany()
