@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { requireAction } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { computeExecutionStatus } from "@/lib/domain/execution-status"
 import { getDwhGateway } from "@/lib/integrations/dwh"
@@ -10,7 +11,11 @@ import { computeVerdicts } from "@/lib/verdicts"
 
 // Ручной запуск синка кнопкой «Обновить». Ошибки синка не бросаются —
 // они журналируются в SyncRun и видны в строке свежести данных.
+// Право есть у всех ролей — проверяем только вход.
 export async function refreshData(): Promise<void> {
+  const auth = await requireAction("refresh_data")
+  if (!auth.user) return
+
   await runSync(getDwhGateway(), "manual")
   revalidatePath("/requests")
 }
@@ -21,6 +26,9 @@ export async function bulkApproveRequests(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
+  const auth = await requireAction("approve_requests")
+  if (!auth.user) return { error: auth.error }
+
   const uids = formData.getAll("uids").map(String)
   if (uids.length === 0) return { error: "Выберите заявки" }
 

@@ -114,10 +114,15 @@ model ExecutionComment {
   id        String   @id @default(cuid())
   requestId String
   text      String
-  author    String // строка до появления авторизации
+  author    String // снапшот имени автора на момент записи
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  request PaymentRequest @relation(fields: [requestId], references: [id])
+  // Автор-пользователь; author (строка) остаётся снапшотом имени.
+  // null — записи, созданные до появления авторизации.
+  authorId String?
+
+  request    PaymentRequest @relation(fields: [requestId], references: [id])
+  authorUser User?          @relation(fields: [authorId], references: [id])
 
   @@index([requestId])
   @@map("execution_comments")
@@ -307,4 +312,40 @@ model BankAccount {
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
 
   @@map("bank_accounts")
+}
+
+// --- Авторизация и роли (спека 2026-07-15-auth-roles-design) ---
+
+enum UserRole {
+  owner
+  accountant
+  viewer
+}
+
+model User {
+  id           String   @id @default(cuid())
+  login        String   @unique // хранится в нижнем регистре
+  name         String
+  role         UserRole
+  passwordHash String // scrypt: "salt:hash" (hex)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  sessions          Session[]
+  executionComments ExecutionComment[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique // SHA-256 токена: дамп БД не даёт живых сессий
+  userId    String
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }

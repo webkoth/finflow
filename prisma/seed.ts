@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client"
+import { hashPassword } from "../lib/auth/passwords"
 import { fixtureDwhGateway } from "../lib/integrations/dwh-fixture"
 import { runSync } from "../lib/sync/run-sync"
 
@@ -71,6 +72,40 @@ async function main() {
   })
   const count = await prisma.transaction.count()
   console.log(`Seed: создано ${count} транзакций`)
+
+  // Демо-пользователи для e2e и песочницы (пароли известны тестам).
+  // Guard: демо-логины с известными паролями (в т.ч. e2e-owner — роль
+  // owner) не должны попасть в production при случайном запуске сида
+  // с боевым окружением.
+  if (process.env.NODE_ENV !== "production") {
+    const demoUsers = [
+      { login: "e2e-owner", name: "E2E Собственник", role: "owner" as const },
+      {
+        login: "e2e-accountant",
+        name: "E2E Бухгалтер",
+        role: "accountant" as const,
+      },
+      { login: "e2e-viewer", name: "E2E Читатель", role: "viewer" as const },
+    ]
+    for (const u of demoUsers) {
+      await prisma.user.upsert({
+        where: { login: u.login },
+        // passwordHash обновляем и при апдейте: повторный сид чинит пароль,
+        // если e2e-тест его менял.
+        update: {
+          passwordHash: hashPassword(`${u.login}-password`),
+          isActive: true,
+          role: u.role,
+        },
+        create: { ...u, passwordHash: hashPassword(`${u.login}-password`) },
+      })
+    }
+    console.log(
+      "Seed: демо-пользователи (e2e-owner / e2e-accountant / e2e-viewer)"
+    )
+  } else {
+    console.log("Seed: демо-пользователи пропущены (production)")
+  }
 
   // Настройки светофора: дефолты из домена.
   const verdictThresholds: Array<{ key: string; value: number }> = [

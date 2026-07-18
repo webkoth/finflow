@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { requireAction } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { validateBankAccountInput } from "@/lib/domain/reference/bank-account"
 
@@ -25,6 +26,8 @@ export async function createBankAccount(
   _prev: { error: string | null },
   fd: FormData
 ): Promise<{ error: string | null }> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return { error: auth.error }
   const input = parse(fd)
   const err = validateBankAccountInput(input)
   if (err) return { error: err }
@@ -37,6 +40,8 @@ export async function updateBankAccount(
   _prev: { error: string | null },
   fd: FormData
 ): Promise<{ error: string | null }> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return { error: auth.error }
   const id = str(fd, "id")
   if (!id) return { error: "Не указан идентификатор счёта" }
   const input = parse(fd)
@@ -48,6 +53,8 @@ export async function updateBankAccount(
 }
 
 export async function setBankAccountActive(fd: FormData): Promise<void> {
+  const auth = await requireAction("manage_reference")
+  if (!auth.user) return
   const id = str(fd, "id")
   const active = str(fd, "active") === "1"
   if (!id) return

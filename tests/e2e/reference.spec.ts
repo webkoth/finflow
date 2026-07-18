@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test"
+import { loginAs } from "./helpers"
 
 test("витрина справочников открывается", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/reference")
   await expect(page.getByRole("heading", { name: "Справочники" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Статьи ДДС" })).toBeVisible()
 })
 
 test("ДДС: группа и вложенная статья появляются деревом", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/reference/cashflow-items")
 
   const group = `Группа-${Date.now()}`
@@ -26,6 +29,7 @@ test("ДДС: группа и вложенная статья появляютс
 })
 
 test("ДДС: конечная статья без типа показывает ошибку", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/reference/cashflow-items")
   await page.getByLabel("Наименование").fill(`БезТипа-${Date.now()}`)
   await page.getByRole("button", { name: "Добавить" }).click()
@@ -33,6 +37,7 @@ test("ДДС: конечная статья без типа показывает
 })
 
 test("банковский счёт создаётся и виден в списке", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/reference/bank-accounts")
   const name = `Счёт-${Date.now()}`
   await page.getByLabel("Название счёта").fill(name)
@@ -46,6 +51,7 @@ test("банковский счёт создаётся и виден в спис
 })
 
 test("невалидный БИК показывает ошибку", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/reference/bank-accounts")
   await page.getByLabel("Название счёта").fill(`Счёт-${Date.now()}`)
   await page.getByLabel("Номер счёта").fill("40702810900000009999")

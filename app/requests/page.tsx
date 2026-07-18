@@ -1,7 +1,9 @@
 import Link from "next/link"
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { formatDate } from "@/lib/domain/dates"
 import { formatMoneyBig } from "@/lib/domain/money"
+import { can, type Role } from "@/lib/domain/permissions"
 import { toRub } from "@/lib/domain/verdict"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -74,6 +76,10 @@ export default async function RequestsPage({
 }: {
   searchParams: Promise<Search>
 }) {
+  const user = await requirePageUser()
+  const role = user.role as Role
+  const canApprove = can(role, "approve_requests")
+
   const sp = await searchParams
   const rawStatus = param(sp, "status")
   const status = Object.hasOwn(STATUS_LABELS, rawStatus) ? rawStatus : ""
@@ -175,7 +181,10 @@ export default async function RequestsPage({
         ? VERDICT_DOT_CLASSES[verdict.level as Exclude<VerdictLevel, "block">]
         : "",
       // Массово — только 🟢 (ТЗ §6.4): чекбокс есть только у зелёных.
-      canSelect: r.approvalStatus === "on_approval" && verdict?.level === "ok",
+      canSelect:
+        canApprove &&
+        r.approvalStatus === "on_approval" &&
+        verdict?.level === "ok",
       debitAccountUid: r.debitAccountUid,
       currency: r.currency,
       amountMinorNum: Number(r.amountMinor),
@@ -259,12 +268,14 @@ export default async function RequestsPage({
           ) : (
             <span>Данные ещё не загружались</span>
           )}
-          <Link
-            href="/settings/verdict"
-            className="underline underline-offset-4"
-          >
-            Настройки светофора
-          </Link>
+          {can(role, "manage_verdict_settings") && (
+            <Link
+              href="/settings/verdict"
+              className="underline underline-offset-4"
+            >
+              Настройки светофора
+            </Link>
+          )}
           <form action={refreshData}>
             <Button type="submit" variant="outline" size="sm">
               Обновить

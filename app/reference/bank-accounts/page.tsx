@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
+import { can, type Role } from "@/lib/domain/permissions"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -21,6 +23,9 @@ export default async function Page({
 }: {
   searchParams: Promise<{ archived?: string; edit?: string }>
 }) {
+  const user = await requirePageUser()
+  const canManage = can(user.role as Role, "manage_reference")
+
   const sp = await searchParams
   const showArchived = sp.archived === "1"
   const accounts = await prisma.bankAccount.findMany({
@@ -40,22 +45,24 @@ export default async function Page({
     <main className="mx-auto max-w-5xl space-y-8 p-8">
       <h1 className="text-2xl font-semibold">Банковские счета</h1>
 
-      <BankAccountForm
-        editing={
-          editing
-            ? {
-                id: editing.id,
-                name: editing.name,
-                accountNumber: editing.accountNumber,
-                bankName: editing.bankName,
-                bankBic: editing.bankBic,
-                currency: editing.currency,
-                organization: editing.organization,
-              }
-            : undefined
-        }
-        cancelHref={BASE + (showArchived ? "?archived=1" : "")}
-      />
+      {canManage && (
+        <BankAccountForm
+          editing={
+            editing
+              ? {
+                  id: editing.id,
+                  name: editing.name,
+                  accountNumber: editing.accountNumber,
+                  bankName: editing.bankName,
+                  bankBic: editing.bankBic,
+                  currency: editing.currency,
+                  organization: editing.organization,
+                }
+              : undefined
+          }
+          cancelHref={BASE + (showArchived ? "?archived=1" : "")}
+        />
+      )}
 
       <div className="flex justify-end">
         <Link
@@ -75,7 +82,9 @@ export default async function Page({
             <TableHead>БИК</TableHead>
             <TableHead>Валюта</TableHead>
             <TableHead>Организация</TableHead>
-            <TableHead className="text-right">Действия</TableHead>
+            {canManage && (
+              <TableHead className="text-right">Действия</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -94,33 +103,38 @@ export default async function Page({
               <TableCell>{a.bankBic}</TableCell>
               <TableCell>{a.currency}</TableCell>
               <TableCell>{a.organization}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
-                  <Link
-                    href={`${BASE}?edit=${a.id}${showArchived ? "&archived=1" : ""}`}
-                    className={buttonVariants({ variant: "ghost", size: "sm" })}
-                  >
-                    Изменить
-                  </Link>
-                  <form action={setBankAccountActive}>
-                    <input type="hidden" name="id" value={a.id} />
-                    <input
-                      type="hidden"
-                      name="active"
-                      value={a.isActive ? "" : "1"}
-                    />
-                    <button
-                      type="submit"
+              {canManage && (
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Link
+                      href={`${BASE}?edit=${a.id}${showArchived ? "&archived=1" : ""}`}
                       className={buttonVariants({
                         variant: "ghost",
                         size: "sm",
                       })}
                     >
-                      {a.isActive ? "В архив" : "Вернуть"}
-                    </button>
-                  </form>
-                </div>
-              </TableCell>
+                      Изменить
+                    </Link>
+                    <form action={setBankAccountActive}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <input
+                        type="hidden"
+                        name="active"
+                        value={a.isActive ? "" : "1"}
+                      />
+                      <button
+                        type="submit"
+                        className={buttonVariants({
+                          variant: "ghost",
+                          size: "sm",
+                        })}
+                      >
+                        {a.isActive ? "В архив" : "Вернуть"}
+                      </button>
+                    </form>
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
