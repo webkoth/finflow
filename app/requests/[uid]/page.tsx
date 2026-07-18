@@ -38,6 +38,9 @@ export default async function RequestPage({
 }: {
   params: Promise<{ uid: string }>
 }) {
+  const user = await requirePageUser()
+  const role = user.role as Role
+
   const { uid } = await params
   const request = await prisma.paymentRequest.findUnique({
     where: { uid },
@@ -47,9 +50,6 @@ export default async function RequestPage({
     },
   })
   if (!request) notFound()
-
-  const user = await requirePageUser()
-  const role = user.role as Role
 
   const deadline = executionDeadline(request.payDate)
   const ctx = await loadRequestContext(request)
