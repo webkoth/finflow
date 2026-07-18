@@ -1,3 +1,4 @@
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { formatDate } from "@/lib/domain/dates"
 import { formatMoney } from "@/lib/domain/money"
@@ -16,6 +17,8 @@ import { TransactionForm } from "./transaction-form"
 export const dynamic = "force-dynamic"
 
 export default async function TransactionsPage() {
+  await requirePageUser()
+
   const transactions = await prisma.transaction.findMany({
     orderBy: { occurredAt: "desc" },
   })

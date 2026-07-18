@@ -60,6 +60,37 @@ test("не-owner не видит страницу пользователей (40
   expect(response?.status()).toBe(404)
 })
 
+test("viewer не видит согласование и форму комментария", async ({ page }) => {
+  await loginAs(page, "viewer")
+  await page.goto("/requests")
+  // Чекбоксов массового согласования нет ни у одной строки
+  await expect(page.getByLabel(/Выбрать REQ-/)).toHaveCount(0)
+  await page.getByRole("link", { name: "REQ-0004" }).click()
+  await expect(page.getByRole("button", { name: "Согласовать" })).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Добавить комментарий" })
+  ).toHaveCount(0)
+})
+
+test("accountant: комментарий можно, согласование нельзя, настройки скрыты", async ({
+  page,
+}) => {
+  await loginAs(page, "accountant")
+  await page.goto("/requests")
+  await expect(page.getByText("Настройки светофора")).toHaveCount(0)
+  await page.getByRole("link", { name: "REQ-0004" }).click()
+  await expect(page.getByRole("button", { name: "Согласовать" })).toHaveCount(0)
+  await expect(
+    page.getByRole("button", { name: "Добавить комментарий" })
+  ).toBeVisible()
+})
+
+test("не-owner получает 404 на настройках светофора", async ({ page }) => {
+  await loginAs(page, "viewer")
+  const response = await page.goto("/settings/verdict")
+  expect(response?.status()).toBe(404)
+})
+
 test("смена пароля: старый перестаёт работать, новый работает", async ({
   page,
   browser,

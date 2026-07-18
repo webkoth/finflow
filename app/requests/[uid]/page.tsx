@@ -1,10 +1,12 @@
 // app/requests/[uid]/page.tsx
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { formatDate } from "@/lib/domain/dates"
 import { executionDeadline } from "@/lib/domain/execution-status"
 import { formatMoneyBig } from "@/lib/domain/money"
+import { can, type Role } from "@/lib/domain/permissions"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -45,6 +47,9 @@ export default async function RequestPage({
     },
   })
   if (!request) notFound()
+
+  const user = await requirePageUser()
+  const role = user.role as Role
 
   const deadline = executionDeadline(request.payDate)
   const ctx = await loadRequestContext(request)
@@ -225,7 +230,9 @@ export default async function RequestPage({
                   </li>
                 ))}
               </ul>
-              <CommentForm uid={request.uid} />
+              {can(role, "comment_execution") && (
+                <CommentForm uid={request.uid} />
+              )}
             </CardContent>
           </Card>
 
@@ -235,7 +242,8 @@ export default async function RequestPage({
         <div className="space-y-6">
           <VerdictPanel verdict={ctx.verdict} syncedAtText={syncedAtText} />
 
-          {request.approvalStatus === "on_approval" &&
+          {can(role, "approve_requests") &&
+            request.approvalStatus === "on_approval" &&
             !request.isDeletedIn1c && (
               <Card>
                 <CardHeader>

@@ -1,3 +1,4 @@
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { ArticleDictionary } from "@/components/reference/article-dictionary"
 import { createArticle, setArticleActive, updateArticle } from "./actions"
@@ -10,6 +11,8 @@ export default async function Page({
 }: {
   searchParams: Promise<{ archived?: string; edit?: string }>
 }) {
+  await requirePageUser()
+
   const sp = await searchParams
   const showArchived = sp.archived === "1"
   const articles = await prisma.article.findMany({

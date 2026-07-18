@@ -44,14 +44,16 @@ test("карточка: несуществующий uid отдаёт 404", asyn
 test("комментарий бухгалтера сохраняется и виден на карточке", async ({
   page,
 }) => {
-  await loginAs(page, "owner")
+  await loginAs(page, "accountant")
   await syncFixtureData(page)
   await page.getByRole("link", { name: "REQ-0002" }).click()
   const text = `Ждём деньги от маркетплейса, оплатим позже — e2e-${Date.now()}`
-  await page.getByLabel("Автор").fill("Бухгалтер Е2Е")
   await page.getByLabel("Комментарий").fill(text)
   await page.getByRole("button", { name: "Добавить комментарий" }).click()
   await expect(page.getByText(text)).toBeVisible()
+  // Имя есть и в шапке — проверяем автора внутри элемента комментария
+  const comment = page.locator("li", { hasText: text })
+  await expect(comment).toContainText("E2E Бухгалтер")
 })
 
 test("согласование заявки меняет статус (mock 1С)", async ({ page }) => {

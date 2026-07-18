@@ -2,6 +2,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { requireAction } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import {
   DEFAULT_INCLUDE,
@@ -21,6 +22,9 @@ export async function saveVerdictSettings(
   _prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
+  const auth = await requireAction("manage_verdict_settings")
+  if (!auth.user) return { error: auth.error }
+
   const thresholds: Array<{ key: string; value: number }> = []
   for (const key of THRESHOLD_KEYS) {
     const label = THRESHOLD_LABELS[key] ?? key

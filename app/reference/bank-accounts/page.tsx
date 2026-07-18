@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
@@ -21,6 +22,8 @@ export default async function Page({
 }: {
   searchParams: Promise<{ archived?: string; edit?: string }>
 }) {
+  await requirePageUser()
+
   const sp = await searchParams
   const showArchived = sp.archived === "1"
   const accounts = await prisma.bankAccount.findMany({
