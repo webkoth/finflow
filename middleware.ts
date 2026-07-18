@@ -10,7 +10,8 @@ export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone()
   url.pathname = "/login"
   url.search = ""
-  if (pathname !== "/") url.searchParams.set("callbackUrl", pathname)
+  if (pathname !== "/")
+    url.searchParams.set("callbackUrl", pathname + req.nextUrl.search)
   return NextResponse.redirect(url)
 }
 

@@ -11,6 +11,10 @@ import { prisma } from "@/lib/db"
 import { can, type Action, type Role } from "@/lib/domain/permissions"
 import type { User } from "@prisma/client"
 
+// passwordHash не должен покидать этот модуль — иначе первый же проброс
+// пользователя в клиентский компонент отдаст scrypt-хеш браузеру.
+export type SessionUser = Omit<User, "passwordHash">
+
 export const SESSION_COOKIE = "finflow_session"
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 const RENEW_AFTER_MS = 24 * 60 * 60 * 1000
@@ -34,7 +38,9 @@ export async function startSession(userId: string): Promise<void> {
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // Secure-кука по HTTP отбрасывается браузером; включить COOKIE_SECURE=true
+    // вместе с появлением TLS на контурах.
+    secure: process.env.COOKIE_SECURE === "true",
     maxAge: COOKIE_MAX_AGE_S,
     path: "/",
   })
@@ -52,13 +58,13 @@ export async function endSession(): Promise<void> {
 
 // Текущий пользователь; cache() — один запрос к БД на рендер.
 // null: нет cookie, сессия не найдена/истекла, пользователь деактивирован.
-export const getCurrentUser = cache(async (): Promise<User | null> => {
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const store = await cookies()
   const token = store.get(SESSION_COOKIE)?.value
   if (!token) return null
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { user: true },
+    include: { user: { omit: { passwordHash: true } } },
   })
   if (!session || !session.user.isActive) return null
   const now = Date.now()
@@ -76,14 +82,14 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 // Для страниц: нет валидной сессии (протухшая кука, деактивация) → на /login.
 // Иначе страница тихо отрендерилась бы для «viewer» — читать мог бы кто угодно
 // с мёртвой кукой (требование ревью: DoD «без сессии → /login» для чтения тоже).
-export async function requirePageUser(): Promise<User> {
+export async function requirePageUser(): Promise<SessionUser> {
   const user = await getCurrentUser()
   if (!user) redirect("/login")
   return user
 }
 
 export type AuthResult =
-  { user: User; error?: never } | { user?: never; error: string }
+  { user: SessionUser; error?: never } | { user?: never; error: string }
 
 // Проверка права в server actions: возвращает { error }, не бросает
 // (паттерн ожидаемых ошибок CLAUDE.md).
