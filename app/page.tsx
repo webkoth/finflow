@@ -43,6 +43,22 @@ export default async function Page() {
             Пользователи
           </Link>
         </div>
+        <div>
+          <Link
+            href="/dispatch"
+            className="text-primary underline underline-offset-4"
+          >
+            Отправка платёжек
+          </Link>
+        </div>
+        <div>
+          <Link
+            href="/settings/cash-flow-items"
+            className="text-primary underline underline-offset-4"
+          >
+            Статьи для отправки платёжек
+          </Link>
+        </div>
       </div>
     </div>
   )
