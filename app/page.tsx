@@ -35,6 +35,14 @@ export default async function Page() {
             Справочники
           </Link>
         </div>
+        <div>
+          <Link
+            href="/settings/users"
+            className="text-primary underline underline-offset-4"
+          >
+            Пользователи
+          </Link>
+        </div>
       </div>
     </div>
   )
