@@ -1,6 +1,6 @@
 // lib/auth/passwords.ts
 // Хеширование паролей: scrypt из node:crypto, без внешних зависимостей.
-// Формат хранения: "s1:salt:hex", версия — для будущей смены параметров.
+// Формат хранения: "s1:salt:hash", версия — для будущей смены параметров.
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto"
 
 const FORMAT_VERSION = "s1"
