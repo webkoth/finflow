@@ -25,6 +25,21 @@ describe("convertToRubMinor", () => {
       5_000_000_000_00n
     )
   })
+
+  it("дробный курс CNY без округления", () => {
+    // 100 CNY в копейках × 11.5 ₽/CNY = 1150 ₽ в копейках
+    expect(convertToRubMinor(100_00n, "CNY", rates)).toBe(1150_00n)
+  })
+
+  it("дробный курс CNY с округлением границы", () => {
+    // 333.33 CNY × 11.5 = 3833.295 ₽; Math.round(3833.295) = 3833.30 ₽
+    expect(convertToRubMinor(333_33n, "CNY", rates)).toBe(383330n)
+  })
+
+  it("отрицательный остаток (овердрафт)", () => {
+    // -100 USD в копейках × 80 ₽/USD = -8000 ₽ в копейках
+    expect(convertToRubMinor(-100_00n, "USD", rates)).toBe(-8000_00n)
+  })
 })
 
 describe("summarizeBalances", () => {
@@ -65,6 +80,21 @@ describe("summarizeBalances", () => {
       totalRubMinor: 0n,
       isPartial: false,
       accountCount: 0,
+    })
+  })
+
+  it("отрицательный остаток уменьшает итог", () => {
+    const s = summarizeBalances(
+      [
+        account("RUB", 1000_00n),
+        account("USD", -50_00n), // овердрафт: -0.50 USD × 80 ₽/USD = -40 ₽
+      ],
+      rates
+    )
+    expect(s).toEqual({
+      totalRubMinor: -3000_00n, // 1000_00 + (-4000_00) = -3000_00
+      isPartial: false,
+      accountCount: 2,
     })
   })
 })
