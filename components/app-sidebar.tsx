@@ -15,12 +15,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { NavMain, type NavGroup } from "@/components/nav-main"
+import { NavMain, type IconName, type NavGroup } from "@/components/nav-main"
 
 type NavItemConfig = {
   title: string
   href: string
-  icon: string
+  icon: IconName
   action?: Action // пункт виден, только если can(role, action)
 }
 

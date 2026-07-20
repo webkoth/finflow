@@ -23,9 +23,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
-const ICONS: Record<string, LucideIcon> = {
+const ICONS = {
   dashboard: LayoutDashboard,
   transactions: ArrowLeftRight,
   requests: FileCheck,
@@ -34,13 +35,15 @@ const ICONS: Record<string, LucideIcon> = {
   users: Users,
   "cash-flow-items": ListChecks,
   verdict: Gauge,
-}
+} satisfies Record<string, LucideIcon>
 
-export type NavItem = { title: string; href: string; icon: string }
+export type IconName = keyof typeof ICONS
+export type NavItem = { title: string; href: string; icon: IconName }
 export type NavGroup = { label: string; items: NavItem[] }
 
 export function NavMain({ groups }: { groups: NavGroup[] }) {
   const pathname = usePathname()
+  const { setOpenMobile } = useSidebar()
 
   return (
     <>
@@ -59,7 +62,13 @@ export function NavMain({ groups }: { groups: NavGroup[] }) {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      render={<Link href={item.href} />}
+                      onClick={() => setOpenMobile(false)}
+                      render={
+                        <Link
+                          href={item.href}
+                          aria-current={isActive ? "page" : undefined}
+                        />
+                      }
                     >
                       {Icon && <Icon />}
                       <span>{item.title}</span>
