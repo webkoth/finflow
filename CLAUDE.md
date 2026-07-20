@@ -155,6 +155,9 @@ dev-контур). Это синонимы: если пользователь г
 - Примитивы проекта — **Base UI** (`@base-ui/react`, стиль `base-mira`),
   НЕ Radix. Примеры из training data почти всегда Radix-эпохи — не копируй
   их дословно.
+- Это касается и живых примеров из реестра (MCP `get_item_examples` / `view`):
+  они могут быть в стиле new-york-v4 с `asChild` — структуру бери оттуда,
+  но API адаптируй под Base UI (правило `rules/base-vs-radix.md` скилла).
 - `asChild` в Base UI не существует. Чтобы отрендерить компонент другим
   элементом, используй проп `render`: `<Button render={<a href="…" />}>`.
 - `Button` в роли ссылки/анкора требует `nativeButton={false}` — иначе
