@@ -99,8 +99,10 @@ dev-контур). Это синонимы: если пользователь г
 - Перед созданием или правкой любого UI-компонента сверяйся с реестром shadcn:
   через инструменты MCP-сервера `shadcn` (если подключён) или командами CLI:
   - `npx shadcn@latest docs <component>` — дока, API-референс и примеры компонента;
-  - `npx shadcn@latest search <query>` — поиск по реестрам;
-  - `npx shadcn@latest view <item>` — просмотр элемента реестра.
+  - `npx shadcn@latest search <registry> -q <query>` — поиск по реестру
+    (например, `search @shadcn -q card`);
+  - `npx shadcn@latest view <item>` — просмотр элемента реестра
+    (например, `view @shadcn/card`).
 - Не пиши компоненты shadcn по памяти: примеры из training data часто
   устаревшие. Актуальная документация всегда важнее памяти модели.
 - Индекс всей документации для ИИ: https://ui.shadcn.com/llms.txt
