@@ -1,11 +1,19 @@
 import Link from "next/link"
 import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
-import { summarizeBalances } from "@/lib/domain/balances"
+import { convertToRubMinor, summarizeBalances } from "@/lib/domain/balances"
 import { startOfMoscowDay } from "@/lib/domain/dates"
 import { formatMoneyBig } from "@/lib/domain/money"
 import { groupDailyCashflow } from "@/lib/domain/transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { CashflowChart } from "./cashflow-chart"
 
 export const dynamic = "force-dynamic"
@@ -146,6 +154,61 @@ export default async function DashboardPage() {
       </div>
 
       <CashflowChart points={points} />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Остатки по счетам</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {accounts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Данные ещё не синхронизированы
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Организация</TableHead>
+                  <TableHead>Банк</TableHead>
+                  <TableHead>Счёт</TableHead>
+                  <TableHead>Валюта</TableHead>
+                  <TableHead className="text-right">Остаток</TableHead>
+                  <TableHead className="text-right">В рублях</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {accounts.map((a) => {
+                  const rub = convertToRubMinor(
+                    a.balanceMinor,
+                    a.currency,
+                    rates
+                  )
+                  return (
+                    <TableRow key={a.id}>
+                      <TableCell>{a.orgName}</TableCell>
+                      <TableCell>{a.bankName ?? "—"}</TableCell>
+                      <TableCell>{a.accountName}</TableCell>
+                      <TableCell>{a.currency}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoneyBig(a.balanceMinor, a.currency)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {rub === null ? (
+                          <span className="text-muted-foreground">
+                            нет курса
+                          </span>
+                        ) : (
+                          formatMoneyBig(rub)
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </main>
   )
 }
