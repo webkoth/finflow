@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   ROOT_UID,
   buildSyncPlan,
+  resolveParentLinks,
   parseFlow,
   parseParentUid,
 } from "./sync-diff"
@@ -157,5 +158,45 @@ describe("buildSyncPlan", () => {
     const plan = buildSyncPlan<R, L>([], [], same)
     expect(plan.toCreate).toEqual([])
     expect(plan.unchanged).toBe(0)
+  })
+})
+
+describe("resolveParentLinks", () => {
+  const idByUid = new Map([
+    ["u-group", "local-group"],
+    ["u-child", "local-child"],
+    ["u-root", "local-root"],
+  ])
+
+  it("связывает потомка с родителем по UID", () => {
+    const links = resolveParentLinks(
+      [{ uid: "u-child", parentUid: "u-group" }],
+      idByUid
+    )
+    expect(links).toEqual([{ localId: "local-child", parentId: "local-group" }])
+  })
+
+  it("корневая статья получает parentId = null", () => {
+    const links = resolveParentLinks(
+      [{ uid: "u-root", parentUid: null }],
+      idByUid
+    )
+    expect(links).toEqual([{ localId: "local-root", parentId: null }])
+  })
+
+  it("неизвестный родитель не роняет разбор — статья остаётся в корне", () => {
+    const links = resolveParentLinks(
+      [{ uid: "u-child", parentUid: "u-неизвестный" }],
+      idByUid
+    )
+    expect(links).toEqual([{ localId: "local-child", parentId: null }])
+  })
+
+  it("статьи, которых нет в карте, пропускаются", () => {
+    const links = resolveParentLinks(
+      [{ uid: "u-чужой", parentUid: "u-group" }],
+      idByUid
+    )
+    expect(links).toEqual([])
   })
 })

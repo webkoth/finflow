@@ -88,3 +88,20 @@ export function buildSyncPlan<R extends RemoteRecord, L extends LocalRecord>(
 
   return plan
 }
+
+// 1С указывает родителя по своему UID, у нас идентификаторы свои. После записи
+// всех статей строим связи вторым проходом — иначе статья, приехавшая раньше
+// своей группы, осталась бы без родителя.
+export function resolveParentLinks(
+  remote: { uid: string; parentUid: string | null }[],
+  idByUid: Map<string, string>
+): { localId: string; parentId: string | null }[] {
+  const links: { localId: string; parentId: string | null }[] = []
+  for (const r of remote) {
+    const localId = idByUid.get(r.uid)
+    if (!localId) continue
+    const parentId = r.parentUid ? (idByUid.get(r.parentUid) ?? null) : null
+    links.push({ localId, parentId })
+  }
+  return links
+}
