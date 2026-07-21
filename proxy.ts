@@ -1,9 +1,9 @@
-// middleware.ts
+// proxy.ts
 import { NextResponse, type NextRequest } from "next/server"
 
 const SESSION_COOKIE = "finflow_session"
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   if (pathname.startsWith("/login")) return NextResponse.next()
   if (req.cookies.has(SESSION_COOKIE)) return NextResponse.next()
