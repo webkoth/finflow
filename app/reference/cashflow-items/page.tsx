@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { ArticleDictionary } from "@/components/reference/article-dictionary"
-import { createArticle, setArticleActive, updateArticle } from "./actions"
+import { SyncStatus } from "@/components/reference/sync-status"
 
 export const dynamic = "force-dynamic"
 const BASE = "/reference/cashflow-items"
@@ -8,7 +8,7 @@ const BASE = "/reference/cashflow-items"
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; edit?: string }>
+  searchParams: Promise<{ archived?: string }>
 }) {
   const sp = await searchParams
   const showArchived = sp.archived === "1"
@@ -17,38 +17,15 @@ export default async function Page({
     orderBy: { createdAt: "asc" },
   })
 
-  let editing = undefined as (typeof articles)[number] | undefined
-  if (sp.edit) {
-    editing =
-      articles.find((a) => a.id === sp.edit) ??
-      (await prisma.article.findUnique({ where: { id: sp.edit } })) ??
-      undefined
-  }
-
   return (
     <main className="mx-auto max-w-4xl space-y-8 p-8">
       <h1 className="text-2xl font-semibold">Статьи ДДС</h1>
+      <SyncStatus />
       <ArticleDictionary
         kind="CASHFLOW"
         articles={articles}
         basePath={BASE}
         showArchived={showArchived}
-        editing={
-          editing
-            ? {
-                id: editing.id,
-                name: editing.name,
-                code: editing.code,
-                flow: editing.flow,
-                isGroup: editing.isGroup,
-                description: editing.description,
-                parentId: editing.parentId,
-              }
-            : undefined
-        }
-        createAction={createArticle}
-        updateAction={updateArticle}
-        setActiveAction={setArticleActive}
       />
     </main>
   )
