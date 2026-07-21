@@ -6,6 +6,7 @@ import { startOfMoscowDay } from "@/lib/domain/dates"
 import { formatMoneyBig } from "@/lib/domain/money"
 import { groupDailyCashflow } from "@/lib/domain/transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CashflowChart } from "./cashflow-chart"
 
 export const dynamic = "force-dynamic"
 
@@ -53,7 +54,6 @@ export default async function DashboardPage() {
   const dispatchCount = (status: string) =>
     dispatchGroups.find((g) => g.status === status)?._count ?? 0
   const points = groupDailyCashflow(transactions, CHART_DAYS, now)
-  void points // используется графиком в Task 7
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 p-8">
@@ -144,6 +144,8 @@ export default async function DashboardPage() {
           </Card>
         </Link>
       </div>
+
+      <CashflowChart points={points} />
     </main>
   )
 }
