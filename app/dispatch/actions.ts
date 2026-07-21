@@ -15,7 +15,16 @@ export type FormState = { error: string | null }
 const MAX_FILE_BYTES = 15 * 1024 * 1024
 
 function ordersDir(): string {
-  return process.env.PAYMENT_ORDERS_DIR ?? "var/payment-orders"
+  // turbopackIgnore: каталог платёжек — runtime-хранилище загрузок, его
+  // содержимое не должно попадать в файловую трассировку сборки.
+  return (
+    process.env.PAYMENT_ORDERS_DIR ??
+    path.join(
+      /* turbopackIgnore: true */ process.cwd(),
+      "var",
+      "payment-orders"
+    )
+  )
 }
 
 // Пересчёт not_ready ↔ awaiting_confirmation после изменения файла/чата.
@@ -57,17 +66,23 @@ export async function attachDispatchFile(
 
   const safeName = path.basename(file.name).replace(/[^\wа-яА-ЯёЁ.\-]+/g, "_")
   const dir = ordersDir()
-  await mkdir(dir, { recursive: true })
-  const filePath = path.join(dir, `${dispatchId}-${safeName}`)
+  await mkdir(/* turbopackIgnore: true */ dir, { recursive: true })
+  const filePath = path.join(
+    /* turbopackIgnore: true */ dir,
+    `${dispatchId}-${safeName}`
+  )
 
   // Пояс безопасности: safeName уже без слешей/спецсимволов, но проверяем
   // итоговый путь явно — инвариант переживёт будущие правки регэкспа.
-  const resolvedDir = path.resolve(dir)
-  const resolvedPath = path.resolve(filePath)
+  const resolvedDir = path.resolve(/* turbopackIgnore: true */ dir)
+  const resolvedPath = path.resolve(/* turbopackIgnore: true */ filePath)
   if (!resolvedPath.startsWith(resolvedDir + path.sep))
     return { error: "Недопустимое имя файла" }
 
-  await writeFile(filePath, new Uint8Array(await file.arrayBuffer()))
+  await writeFile(
+    /* turbopackIgnore: true */ filePath,
+    new Uint8Array(await file.arrayBuffer())
+  )
 
   await prisma.paymentOrderDispatch.update({
     where: { id: dispatchId },
