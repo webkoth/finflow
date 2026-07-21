@@ -2,7 +2,12 @@
 // футер с пользователем и выходом. Рендерится только для залогиненных.
 import Link from "next/link"
 import { logout } from "@/app/login/actions"
-import { can, ROLE_LABELS, type Action, type Role } from "@/lib/domain/permissions"
+import {
+  can,
+  ROLE_LABELS,
+  type Action,
+  type Role,
+} from "@/lib/domain/permissions"
 import type { SessionUser } from "@/lib/auth/session"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

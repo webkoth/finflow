@@ -80,7 +80,7 @@ export function CashflowChart({ points }: { points: DailyCashflowPoint[] }) {
                           {chartConfig[name as keyof typeof chartConfig]
                             ?.label ?? name}
                         </span>
-                        <span className="font-mono font-medium tabular-nums text-foreground">
+                        <span className="font-mono font-medium text-foreground tabular-nums">
                           {formatMoney(Number(value))}
                         </span>
                       </div>
