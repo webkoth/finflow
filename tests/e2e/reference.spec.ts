@@ -1,58 +1,59 @@
 import { expect, test } from "@playwright/test"
 
+// Данные готовит сам тест: кнопка «Обновить из 1С» прогоняет синк
+// fixture-шлюза (ONEC_ODATA_MODE=fixture в .env), от seed тест не зависит.
+test("ДДС: справочник наполняется из 1С и показывается деревом", async ({
+  page,
+}) => {
+  await page.goto("/reference/cashflow-items")
+  await page.getByRole("button", { name: "Обновить из 1С" }).click()
+
+  await expect(
+    page.getByRole("cell", { name: "Операционная деятельность" })
+  ).toBeVisible()
+  await expect(
+    page.getByRole("cell", { name: "Поступления от покупателей" })
+  ).toBeVisible()
+  await expect(page.getByText(/Данные из 1С, обновлено/)).toBeVisible()
+})
+
+test("ДДС: редактирование недоступно — источник истины в 1С", async ({
+  page,
+}) => {
+  await page.goto("/reference/cashflow-items")
+  await expect(page.getByRole("button", { name: "Добавить" })).toHaveCount(0)
+  await expect(page.getByRole("link", { name: "Изменить" })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: "В архив" })).toHaveCount(0)
+})
+
+test("ДДС: помеченная удалённой в 1С не попадает в справочник", async ({
+  page,
+}) => {
+  await page.goto("/reference/cashflow-items")
+  await page.getByRole("button", { name: "Обновить из 1С" }).click()
+  await expect(
+    page.getByRole("cell", { name: "Устаревшая статья" })
+  ).toHaveCount(0)
+
+  // И в архиве её тоже нет: запись с пометкой удаления не заводится вовсе,
+  // архивируются только те, что успели приехать активными (см. sync-diff.test.ts).
+  await page.getByRole("link", { name: "Показать архивные" }).click()
+  await expect(
+    page.getByRole("cell", { name: "Устаревшая статья" })
+  ).toHaveCount(0)
+})
+
+test("банковские счета наполняются из 1С", async ({ page }) => {
+  await page.goto("/reference/bank-accounts")
+  await page.getByRole("button", { name: "Обновить из 1С" }).click()
+  await expect(
+    page.getByRole("cell", { name: "Расчётный счёт Сбербанк" })
+  ).toBeVisible()
+  await expect(page.getByRole("cell", { name: "044525225" })).toBeVisible()
+})
+
 test("витрина справочников открывается", async ({ page }) => {
   await page.goto("/reference")
   await expect(page.getByRole("heading", { name: "Справочники" })).toBeVisible()
   await expect(page.getByRole("link", { name: "Статьи ДДС" })).toBeVisible()
-})
-
-test("ДДС: группа и вложенная статья появляются деревом", async ({ page }) => {
-  await page.goto("/reference/cashflow-items")
-
-  const group = `Группа-${Date.now()}`
-  await page.getByLabel("Наименование").fill(group)
-  await page.getByText("Это группа", { exact: true }).click()
-  await page.getByRole("button", { name: "Добавить" }).click()
-  await expect(page.getByRole("cell", { name: group })).toBeVisible()
-
-  const item = `Статья-${Date.now()}`
-  await page.getByLabel("Наименование").fill(item)
-  await page.getByLabel("Тип").click()
-  await page.getByRole("option", { name: "Выбытие" }).click()
-  await page.getByLabel("Родитель").click()
-  await page.getByRole("option", { name: group }).click()
-  await page.getByRole("button", { name: "Добавить" }).click()
-  await expect(page.getByRole("cell", { name: item })).toBeVisible()
-})
-
-test("ДДС: конечная статья без типа показывает ошибку", async ({ page }) => {
-  await page.goto("/reference/cashflow-items")
-  await page.getByLabel("Наименование").fill(`БезТипа-${Date.now()}`)
-  await page.getByRole("button", { name: "Добавить" }).click()
-  await expect(page.getByText("Укажите тип статьи")).toBeVisible()
-})
-
-test("банковский счёт создаётся и виден в списке", async ({ page }) => {
-  await page.goto("/reference/bank-accounts")
-  const name = `Счёт-${Date.now()}`
-  await page.getByLabel("Название счёта").fill(name)
-  await page.getByLabel("Номер счёта").fill("40702810900000009999")
-  await page.getByLabel("Банк").fill("ПАО Сбербанк")
-  await page.getByLabel("БИК").fill("044525225")
-  await page.getByLabel("Валюта").fill("RUB")
-  await page.getByLabel("Организация").fill("ООО Тест")
-  await page.getByRole("button", { name: "Добавить" }).click()
-  await expect(page.getByRole("cell", { name })).toBeVisible()
-})
-
-test("невалидный БИК показывает ошибку", async ({ page }) => {
-  await page.goto("/reference/bank-accounts")
-  await page.getByLabel("Название счёта").fill(`Счёт-${Date.now()}`)
-  await page.getByLabel("Номер счёта").fill("40702810900000009999")
-  await page.getByLabel("Банк").fill("Банк")
-  await page.getByLabel("БИК").fill("123")
-  await page.getByLabel("Валюта").fill("RUB")
-  await page.getByLabel("Организация").fill("ООО Тест")
-  await page.getByRole("button", { name: "Добавить" }).click()
-  await expect(page.getByText("БИК — 9 цифр")).toBeVisible()
 })
