@@ -118,7 +118,7 @@ export default async function DashboardPage() {
                 {executionCount("awaiting")}
               </div>
               <div className="text-xs text-muted-foreground">
-                из них просрочено: {executionCount("overdue")}
+                отдельно просрочено: {executionCount("overdue")}
               </div>
             </CardContent>
           </Card>
