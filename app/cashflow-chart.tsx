@@ -29,7 +29,7 @@ function dayLabel(date: string): string {
 }
 
 export function CashflowChart({ points }: { points: DailyCashflowPoint[] }) {
-  const [period, setPeriod] = useState<string>("90")
+  const [period, setPeriod] = useState<string>("30")
   const visible = points.slice(-Number(period))
   const hasData = visible.some(
     (p) => p.incomeMinor !== 0 || p.expenseMinor !== 0
@@ -40,6 +40,7 @@ export function CashflowChart({ points }: { points: DailyCashflowPoint[] }) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-sm">Движение денег</CardTitle>
         <ToggleGroup
+          aria-label="Период"
           value={[period]}
           onValueChange={(value: string[]) => {
             if (value[0]) setPeriod(value[0])
