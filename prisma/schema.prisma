@@ -437,14 +437,6 @@ model PaymentOrderDispatch {
 }
 
 // Статьи ДДС: список пополняется синком, флаг ставится в настройках.
-model CashFlowItemSetting {
-  id      String  @id @default(cuid())
-  name    String  @unique
-  isGoods Boolean @default(false) // «оплата за товар» → триггер отправки платёжки
-
-  @@map("cash_flow_item_settings")
-}
-
 // --- Сверка расчётных счётов (спека 2026-07-23-bank-reconciliation-design) ---
 
 enum ReconRunStatus {

@@ -56,12 +56,6 @@ const NAV_CONFIG: { label: string; items: NavItemConfig[] }[] = [
         action: "manage_users",
       },
       {
-        title: "Статьи для отправки",
-        href: "/settings/cash-flow-items",
-        icon: "cash-flow-items",
-        action: "manage_cash_flow_items",
-      },
-      {
         title: "Светофор",
         href: "/settings/verdict",
         icon: "verdict",
