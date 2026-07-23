@@ -1,8 +1,6 @@
 // Реальный клиент OData 1С: basic auth, только GET, постранично.
-// Имена объектов и реквизитов 1С собраны здесь в одной карте: конфигурация
-// rbb_cut на момент написания недоступна (нет прав на OData), точные имена
-// подставляются на шаге проверки подключения — см. Task 15 плана
-// docs/superpowers/plans/2026-07-21-onec-reference-sync.md.
+// Имена объектов и реквизитов 1С собраны здесь в одной карте — проверены
+// живыми запросами к базе rbb_cut (учётка ClaudeOR, 2026-07-22/23).
 import { parseFlow, parseParentUid } from "@/lib/domain/reference/sync-diff"
 import type { OneCMovement } from "@/lib/domain/reconciliation/types"
 import type {
@@ -16,11 +14,13 @@ const TIMEOUT_MS = 30_000
 const PAGE_SIZE = 1000
 
 // Имена наборов и реквизитов в конфигурации 1С.
-// ВНИМАНИЕ: значения предварительные, уточняются в Task 15.
 const NAMES = {
   articles: {
     CASHFLOW: "Catalog_СтатьиДвиженияДенежныхСредств",
-    PNL: "Catalog_СтатьиДоходовИРасходов",
+    // Справочник не отдаёт полей ВидДвижения и Комментарий — отсутствующее
+    // поле даёт null, это штатно (вид движения статьям БДР не нужен,
+    // решение 2026-07-22).
+    PNL: "Catalog_RSФП_СтруктураБДР",
   },
   articleFields: {
     uid: "Ref_Key",

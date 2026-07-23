@@ -116,8 +116,10 @@ export async function runReferenceSync(
       gateway.fetchBankAccounts(),
     ])
 
-    // Нераспознанный вид движения у конечной статьи — предупреждение, не сбой.
-    for (const a of [...cashflow, ...pnl]) {
+    // Нераспознанный вид движения у конечной статьи ДДС — предупреждение,
+    // не сбой. У статей БДР вида движения нет вовсе (решение 2026-07-22) —
+    // для них это не предупреждение.
+    for (const a of cashflow) {
       if (!a.isGroup && a.flow === null && !a.isDeletedIn1c) totals.warnings++
     }
 
