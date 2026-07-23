@@ -1,5 +1,6 @@
 // Контракт чтения справочников из 1С. Синк работает только через OneCGateway —
 // реализацию выбирает фабрика по env ONEC_ODATA_MODE.
+import type { OneCMovement } from "@/lib/domain/reconciliation/types"
 import { fixtureOneCGateway } from "./one-c-odata-fixture"
 import { httpOneCGateway } from "./one-c-odata-http"
 
@@ -31,6 +32,12 @@ export type OneCBankAccount = {
 export interface OneCGateway {
   fetchArticles(kind: OneCArticleKind): Promise<OneCArticle[]>
   fetchBankAccounts(): Promise<OneCBankAccount[]>
+  // Движения по счёту за период [from, to] (YYYY-MM-DD включительно): расход + приход.
+  fetchAccountMovements(
+    accountUid: string,
+    from: string,
+    to: string
+  ): Promise<OneCMovement[]>
 }
 
 // ONEC_ODATA_MODE: "fixture" (по умолчанию — демо-данные, dev/e2e) | "real".

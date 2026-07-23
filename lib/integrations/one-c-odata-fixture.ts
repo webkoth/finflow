@@ -1,5 +1,6 @@
 // Демо-справочники в формате 1С. Используются в dev (ONEC_ODATA_MODE=fixture),
 // seed и e2e. UID имитируют GUID из 1С, но узнаваемы по префиксу.
+import type { OneCMovement } from "@/lib/domain/reconciliation/types"
 import type {
   OneCArticle,
   OneCArticleKind,
@@ -146,11 +147,39 @@ const ACCOUNTS: OneCBankAccount[] = [
   },
 ]
 
+// Демо-движения: одно списание по заявке fx-req-1 и один приход.
+// Обороты сходятся с демо-выпиской (fixtureStatementSource): дебет 100, кредит 50.
+const MOVEMENTS: Record<string, OneCMovement[]> = {
+  "fx-acc-sber": [
+    {
+      direction: "debit",
+      amountMinor: 10000n,
+      counterpartyName: "ООО Ромашка",
+      counterpartyInn: "7701234567",
+      counterpartyAccount: "40817810099910004312",
+      purpose: "Оплата по счету 5",
+      basisRequestUid: "fx-req-1",
+    },
+    {
+      direction: "credit",
+      amountMinor: 5000n,
+      counterpartyName: "ООО Клиент",
+      counterpartyInn: "7708888888",
+      counterpartyAccount: "40817810000000009999",
+      purpose: "Поступление",
+      basisRequestUid: null,
+    },
+  ],
+}
+
 export const fixtureOneCGateway: OneCGateway = {
   async fetchArticles(kind: OneCArticleKind) {
     return kind === "CASHFLOW" ? CASHFLOW : PNL
   },
   async fetchBankAccounts() {
     return ACCOUNTS
+  },
+  async fetchAccountMovements(accountUid: string) {
+    return MOVEMENTS[accountUid] ?? []
   },
 }

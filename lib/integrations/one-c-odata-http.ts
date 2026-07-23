@@ -4,6 +4,7 @@
 // подставляются на шаге проверки подключения — см. Task 15 плана
 // docs/superpowers/plans/2026-07-21-onec-reference-sync.md.
 import { parseFlow, parseParentUid } from "@/lib/domain/reference/sync-diff"
+import type { OneCMovement } from "@/lib/domain/reconciliation/types"
 import type {
   OneCArticle,
   OneCArticleKind,
@@ -41,6 +42,20 @@ const NAMES = {
     currency: "ВалютаДенежныхСредств/Code",
     organization: "Владелец/Description",
     deleted: "DeletionMark",
+  },
+  // Наборы движений по счёту (проверено запросом 2026-07-23, база rbb_cut).
+  movements: {
+    expense: "Document_РасходСоСчета",
+    receipt: "Document_ПоступлениеНаСчет",
+  },
+  movementFields: {
+    account: "БанковскийСчет_Key",
+    amount: "СуммаДокумента",
+    counterpartyInn: "Контрагент/ИНН",
+    counterpartyAccount: "СчетКонтрагента/НомерСчета",
+    purpose: "НазначениеПлатежа",
+    basis: "ДокументОснование",
+    date: "Date",
   },
 } as const
 
@@ -134,4 +149,73 @@ export const httpOneCGateway: OneCGateway = {
       isDeletedIn1c: row[f.deleted] === true,
     }))
   },
+
+  async fetchAccountMovements(
+    accountUid: string,
+    from: string,
+    to: string
+  ): Promise<OneCMovement[]> {
+    const f = NAMES.movementFields
+    // Границы периода по московскому времени в формате OData datetime.
+    const fromDt = `${from}T00:00:00`
+    const toDt = `${to}T23:59:59`
+    const filter =
+      `${f.account} eq guid'${accountUid}'` +
+      ` and ${f.date} ge datetime'${fromDt}'` +
+      ` and ${f.date} le datetime'${toDt}'`
+    const expand = encodeURIComponent("Контрагент,СчетКонтрагента")
+    const query = (set: string) =>
+      `${set}?$format=json&$filter=${encodeURIComponent(filter)}&$expand=${expand}`
+
+    const [expense, receipt] = await Promise.all([
+      fetchFiltered(query(NAMES.movements.expense)),
+      fetchFiltered(query(NAMES.movements.receipt)),
+    ])
+
+    const map = (rows: Row[], dir: "debit" | "credit"): OneCMovement[] =>
+      rows.map((row) => ({
+        direction: dir,
+        amountMinor: rublesToMinor(row[f.amount]),
+        counterpartyName: nestedStr(row, "Контрагент", "Description") ?? "",
+        counterpartyInn: nestedStr(row, "Контрагент", "ИНН"),
+        counterpartyAccount: nestedStr(row, "СчетКонтрагента", "НомерСчета"),
+        purpose: str(row, f.purpose) ?? "",
+        basisRequestUid: str(row, f.basis),
+      }))
+
+    return [...map(expense, "debit"), ...map(receipt, "credit")]
+  },
+}
+
+// Запрос с готовым query-string (в отличие от постраничного fetchAll).
+async function fetchFiltered(query: string): Promise<Row[]> {
+  const { base, auth } = config()
+  const res = await fetch(`${base}/${query}`, {
+    headers: { Authorization: auth, Accept: "application/json" },
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  })
+  if (!res.ok) {
+    throw new Error(`1С ответила ошибкой: HTTP ${res.status} (движения)`)
+  }
+  const json = (await res.json()) as { value?: Row[] }
+  return json.value ?? []
+}
+
+// Сумма из 1С приходит в рублях (число/строка) → BigInt-копейки.
+function rublesToMinor(v: unknown): bigint {
+  const n = typeof v === "number" ? v : Number(String(v ?? "0"))
+  if (!Number.isFinite(n)) return 0n
+  return BigInt(Math.round(n * 100))
+}
+
+// Значение вложенного (expand) объекта: row["Контрагент"]["Description"].
+function nestedStr(row: Row, rel: string, field: string): string | null {
+  const obj = row[rel]
+  if (obj && typeof obj === "object") {
+    const v = (obj as Record<string, unknown>)[field]
+    if (v !== null && v !== undefined && String(v).trim() !== "") {
+      return String(v).trim()
+    }
+  }
+  return null
 }
