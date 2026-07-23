@@ -40,6 +40,16 @@ const CASHFLOW: OneCArticle[] = [
     isDeletedIn1c: false,
   },
   {
+    uid: "fx-cf-out-goods",
+    code: "1.3",
+    name: "Оплата поставщикам за товар",
+    parentUid: "fx-cf-group-op",
+    isGroup: false,
+    flow: "OUTFLOW",
+    description: null,
+    isDeletedIn1c: false,
+  },
+  {
     uid: "fx-cf-group-fin",
     code: "2",
     name: "Финансовая деятельность",
