@@ -297,6 +297,9 @@ model Article {
   parent      Article?     @relation("ArticleTree", fields: [parentId], references: [id])
   children    Article[]    @relation("ArticleTree")
   isActive    Boolean      @default(true)
+  // Локальный признак finflow «оплата за товар» — НЕ из 1С, синк его
+  // не читает и не пишет. По нему syncDispatch создаёт черновики платёжек.
+  isGoods     Boolean      @default(false)
   createdAt   DateTime     @default(now()) @db.Timestamptz(3)
 
   // Синк из 1С (спека 2026-07-21-onec-reference-sync-design)
