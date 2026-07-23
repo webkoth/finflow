@@ -1,31 +1,19 @@
 // lib/sync/sync-dispatch.ts
-// После синка списаний: пополняет справочник статей ДДС и создаёт черновики
-// отправок платёжек для оплат «за товар» (спека §8, шаг 1 пайплайна).
+// После синка списаний: создаёт черновики отправок платёжек для оплат
+// «за товар» (спека §8, шаг 1 пайплайна). «Товарные» статьи — статьи
+// справочника ДДС с локальным флагом isGoods (страница «Статьи ДДС»).
 // Авто-подбор файла в v1 отключён (процесс выкладки не настроен, §11.2) —
 // файл прикрепляет бухгалтер на /dispatch.
 import { prisma } from "@/lib/db"
 import { computeDispatchReadiness } from "@/lib/domain/dispatch"
 
 export async function syncDispatch(): Promise<number> {
-  // 1. Справочник статей: новые имена из заявок появляются в настройках.
-  const items = await prisma.paymentRequest.findMany({
-    where: { cashFlowItem: { not: null } },
-    distinct: ["cashFlowItem"],
-    select: { cashFlowItem: true },
-  })
-  for (const item of items) {
-    const name = item.cashFlowItem
-    if (!name) continue
-    await prisma.cashFlowItemSetting.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    })
-  }
-
-  // 2. Черновики: списания по заявкам со статьёй «за товар» без отправки.
-  const goods = await prisma.cashFlowItemSetting.findMany({
-    where: { isGoods: true },
+  // «Товарные» статьи — из справочника ДДС (источник истины — 1С),
+  // флаг isGoods — локальный (страница «Статьи ДДС»). Сопоставление
+  // с заявкой — по названию: в заявках из DWH статья приходит строкой,
+  // UID статьи 1С в них нет.
+  const goods = await prisma.article.findMany({
+    where: { kind: "CASHFLOW", isGoods: true, isActive: true },
     select: { name: true },
   })
   const goodsNames = goods.map((g) => g.name)
