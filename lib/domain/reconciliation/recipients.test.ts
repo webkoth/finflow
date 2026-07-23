@@ -3,8 +3,8 @@ import { normalizeName, matchRecipient } from "./recipients"
 
 describe("normalizeName", () => {
   it("убирает орг-форму, кавычки и регистр", () => {
-    expect(normalizeName('ООО «Ромашка»')).toBe("РОМАШКА")
-    expect(normalizeName('ИП Иванов И.И.')).toBe("ИВАНОВ И.И.")
+    expect(normalizeName("ООО «Ромашка»")).toBe("РОМАШКА")
+    expect(normalizeName("ИП Иванов И.И.")).toBe("ИВАНОВ И.И.")
   })
 
   it("схлопывает пробелы", () => {

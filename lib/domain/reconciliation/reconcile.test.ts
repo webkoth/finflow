@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { reconcileAccount } from "./reconcile"
-import type {
-  AccountReconInput,
-  BankStatement,
-  RequestForCheck,
-} from "./types"
+import type { AccountReconInput, BankStatement, RequestForCheck } from "./types"
 
 function stmt(over: Partial<BankStatement> = {}): BankStatement {
   return {
@@ -122,9 +118,7 @@ function req(over: Partial<RequestForCheck> = {}): RequestForCheck {
 
 describe("reconcileAccount — заявки", () => {
   it("одобренная заявка без списания — request_not_executed", () => {
-    const r = reconcileAccount(
-      baseInput({ movements: [], requests: [req()] })
-    )
+    const r = reconcileAccount(baseInput({ movements: [], requests: [req()] }))
     expect(r.discrepancies.map((d) => d.type)).toContain("request_not_executed")
   })
 

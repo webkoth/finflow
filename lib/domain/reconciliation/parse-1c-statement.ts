@@ -31,10 +31,7 @@ function partyName(d: Map<string, string>, base: string): string {
 
 // Парсер стандартного обмена «банк-клиент ↔ 1С» (1CClientBankExchange, kl_to_1c).
 // account — номер расчётного счёта, по которому строим выписку.
-export function parse1CStatement(
-  text: string,
-  account: string
-): BankStatement {
+export function parse1CStatement(text: string, account: string): BankStatement {
   // Секция реквизитов счёта.
   const acctMatch = text.match(
     /СекцияРасчСчет\r?\n([\s\S]*?)\r?\nКонецРасчСчет/

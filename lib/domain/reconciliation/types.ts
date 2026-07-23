@@ -46,10 +46,7 @@ export type RequestForCheck = {
 }
 
 export type ReconAccountStatus =
-  | "matched"
-  | "discrepancy"
-  | "no_data"
-  | "source_error"
+  "matched" | "discrepancy" | "no_data" | "source_error"
 
 export type DiscrepancyType =
   | "closing_balance"
