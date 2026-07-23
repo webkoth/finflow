@@ -24,6 +24,11 @@ export type DwhRequestRow = {
   approvalStatus: DwhApprovalStatus
   importance: number
   comment: string | null
+  // Светофор (план 6)
+  debitAccountUid: string | null
+  contractUid: string | null
+  orderUid: string | null
+  initiatorHead: string | null
 }
 
 export type DwhDebitRow = {

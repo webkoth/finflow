@@ -4,7 +4,10 @@
 import { prisma } from "@/lib/db"
 import { computeExecutionStatus } from "@/lib/domain/execution-status"
 import type { DwhGateway } from "@/lib/integrations/dwh"
-import type { SyncTrigger } from "@prisma/client"
+import { getSliceFetchers } from "@/lib/integrations/slices"
+import { syncDispatch } from "./sync-dispatch"
+import { syncSlices } from "./sync-slices"
+import type { Prisma, SyncTrigger } from "@prisma/client"
 
 const DEFAULT_WINDOW_DAYS = 90
 const RUNNING_STALE_MS = 10 * 60 * 1000
@@ -62,6 +65,10 @@ export async function runSync(
         approvalStatus: r.approvalStatus,
         importance: r.importance,
         comment: r.comment,
+        debitAccountUid: r.debitAccountUid,
+        contractUid: r.contractUid,
+        orderUid: r.orderUid,
+        initiatorHead: r.initiatorHead,
         isDeletedIn1c: false,
         syncedAt,
       }
@@ -123,6 +130,12 @@ export async function runSync(
       debitsUpserted++
     }
 
+    // Срезы светофора: независимые шаги, ошибки — в отчёт, не в исключение.
+    const slices = await syncSlices(getSliceFetchers())
+
+    // Статьи ДДС и черновики отправок платёжек «за товар» (план 9, §8).
+    const dispatchesCreated = await syncDispatch()
+
     // Пересчёт статусов: авторитетный статус — хранимый, единая точка истины.
     const all = await prisma.paymentRequest.findMany({
       where: { isDeletedIn1c: false },
@@ -163,6 +176,8 @@ export async function runSync(
         debitsUpserted,
         debitsSkipped,
         requestsMarkedDeleted,
+        slices: slices as Prisma.InputJsonValue,
+        dispatchesCreated,
       },
     })
     return { skipped: false, runId: run.id, status: "ok" }

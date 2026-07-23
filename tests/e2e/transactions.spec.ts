@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test"
+import { loginAs } from "./helpers"
 
 test("страница транзакций открывается", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/transactions")
   await expect(page.getByRole("heading", { name: "Транзакции" })).toBeVisible()
   await expect(page.getByLabel("Категория")).toBeVisible()
@@ -8,6 +10,7 @@ test("страница транзакций открывается", async ({ pa
 })
 
 test("новая транзакция появляется в списке", async ({ page }) => {
+  await loginAs(page, "owner")
   await page.goto("/transactions")
   const note = `e2e-${Date.now()}`
   await page.getByLabel("Категория").fill("Тест")
@@ -20,6 +23,7 @@ test("новая транзакция появляется в списке", asy
 test("невалидная сумма показывает ошибку, страница не падает", async ({
   page,
 }) => {
+  await loginAs(page, "owner")
   await page.goto("/transactions")
   await page.getByLabel("Категория").fill("Тест")
   await page.getByLabel("Сумма").fill("0")

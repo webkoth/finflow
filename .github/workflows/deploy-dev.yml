@@ -25,6 +25,8 @@ jobs:
       # E2e модуля заявок: демо-DWH и 1С без сети (см. .env.example)
       DWH_MODE: fixture
       ONEC_API_MODE: mock
+      # E2e отправки платёжек: Яндекс Мессенджер в mock-режиме, без сети
+      YM_BOT_MODE: mock
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -36,6 +38,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npx prisma migrate deploy
+      # e2e авторизации требует сид-пользователей (loginAs → e2e-owner и др.).
+      # Демо-пользователи создаются только при NODE_ENV != production (не задан здесь).
+      - run: npx prisma db seed
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 

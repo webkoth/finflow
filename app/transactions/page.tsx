@@ -1,6 +1,8 @@
+import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
 import { formatDate } from "@/lib/domain/dates"
 import { formatMoney } from "@/lib/domain/money"
+import { can, type Role } from "@/lib/domain/permissions"
 import { summarizeByCategory } from "@/lib/domain/transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -16,6 +18,9 @@ import { TransactionForm } from "./transaction-form"
 export const dynamic = "force-dynamic"
 
 export default async function TransactionsPage() {
+  const user = await requirePageUser()
+  const canManage = can(user.role as Role, "manage_reference")
+
   const transactions = await prisma.transaction.findMany({
     orderBy: { occurredAt: "desc" },
   })
@@ -25,7 +30,7 @@ export default async function TransactionsPage() {
     <main className="mx-auto max-w-4xl space-y-8 p-8">
       <h1 className="text-2xl font-semibold">Транзакции</h1>
 
-      <TransactionForm />
+      {canManage && <TransactionForm />}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {summary.map((s) => (

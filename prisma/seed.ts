@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client"
+import { hashPassword } from "../lib/auth/passwords"
 import { fixtureDwhGateway } from "../lib/integrations/dwh-fixture"
 import { fixtureOneCGateway } from "../lib/integrations/one-c-odata-fixture"
 import { runReferenceSync } from "../lib/sync/run-reference-sync"
@@ -73,6 +74,82 @@ async function main() {
   })
   const count = await prisma.transaction.count()
   console.log(`Seed: создано ${count} транзакций`)
+
+  // Демо-пользователи для e2e и песочницы (пароли известны тестам).
+  // Guard: демо-логины с известными паролями (в т.ч. e2e-owner — роль
+  // owner) не должны попасть в production при случайном запуске сида
+  // с боевым окружением.
+  if (process.env.NODE_ENV !== "production") {
+    const demoUsers = [
+      { login: "e2e-owner", name: "E2E Собственник", role: "owner" as const },
+      {
+        login: "e2e-accountant",
+        name: "E2E Бухгалтер",
+        role: "accountant" as const,
+      },
+      { login: "e2e-viewer", name: "E2E Читатель", role: "viewer" as const },
+    ]
+    for (const u of demoUsers) {
+      await prisma.user.upsert({
+        where: { login: u.login },
+        // passwordHash обновляем и при апдейте: повторный сид чинит пароль,
+        // если e2e-тест его менял.
+        update: {
+          passwordHash: hashPassword(`${u.login}-password`),
+          isActive: true,
+          role: u.role,
+        },
+        create: { ...u, passwordHash: hashPassword(`${u.login}-password`) },
+      })
+    }
+    console.log(
+      "Seed: демо-пользователи (e2e-owner / e2e-accountant / e2e-viewer)"
+    )
+  } else {
+    console.log("Seed: демо-пользователи пропущены (production)")
+  }
+
+  // Настройки светофора: дефолты из домена.
+  const verdictThresholds: Array<{ key: string; value: number }> = [
+    { key: "fundDeficitPercent", value: 20 },
+    { key: "oldPartnerMonths", value: 12 },
+    { key: "minOperationsForConstant", value: 3 },
+  ]
+  for (const t of verdictThresholds) {
+    await prisma.verdictThreshold.upsert({
+      where: { key: t.key },
+      update: {},
+      create: t,
+    })
+  }
+  const verdictCheckDefaults: Array<{
+    checkId: string
+    includeInVerdict: boolean
+  }> = [
+    { checkId: "funds", includeInVerdict: true },
+    { checkId: "fund_balance", includeInVerdict: true },
+    { checkId: "finplan", includeInVerdict: false },
+    { checkId: "document", includeInVerdict: true },
+    { checkId: "order_contract", includeInVerdict: true },
+    { checkId: "partner", includeInVerdict: true },
+    { checkId: "preapproved", includeInVerdict: false },
+  ]
+  for (const c of verdictCheckDefaults) {
+    await prisma.verdictCheckSetting.upsert({
+      where: { checkId: c.checkId },
+      update: {},
+      create: c,
+    })
+  }
+  console.log("Seed: настройки светофора")
+
+  // Статья «за товар» для демо и e2e: черновики отправок создаст синк.
+  await prisma.cashFlowItemSetting.upsert({
+    where: { name: "Оплата поставщикам за товар" },
+    update: { isGoods: true },
+    create: { name: "Оплата поставщикам за товар", isGoods: true },
+  })
+  console.log("Seed: статья «Оплата поставщикам за товар» помечена isGoods")
 
   // --- Справочники ---
   // Справочники приходят из 1С. В seed материализуем их тем же конвейером,

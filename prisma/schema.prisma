@@ -74,6 +74,11 @@ model PaymentRequest {
   approvalStatus  ApprovalStatus
   importance      Int             @default(0) // 1 = срочная
   comment         String?
+  // Светофор (план 6): счёт списания, договор, заказ, руководитель отдела.
+  debitAccountUid String?
+  contractUid     String?
+  orderUid        String?
+  initiatorHead   String?
   executionStatus ExecutionStatus
   executedAt      DateTime?       @db.Timestamptz(3)
   isDeletedIn1c   Boolean         @default(false)
@@ -81,6 +86,7 @@ model PaymentRequest {
 
   debits            Debit[]
   executionComments ExecutionComment[]
+  dispatches        PaymentOrderDispatch[]
 
   @@index([executionStatus])
   @@index([payDate])
@@ -100,6 +106,8 @@ model Debit {
 
   request PaymentRequest @relation(fields: [requestUid], references: [uid])
 
+  dispatches PaymentOrderDispatch[]
+
   @@index([requestUid])
   @@map("debits")
 }
@@ -109,10 +117,15 @@ model ExecutionComment {
   id        String   @id @default(cuid())
   requestId String
   text      String
-  author    String // строка до появления авторизации
+  author    String // снапшот имени автора на момент записи
   createdAt DateTime @default(now()) @db.Timestamptz(3)
 
-  request PaymentRequest @relation(fields: [requestId], references: [id])
+  // Автор-пользователь; author (строка) остаётся снапшотом имени.
+  // null — записи, созданные до появления авторизации.
+  authorId String?
+
+  request    PaymentRequest @relation(fields: [requestId], references: [id])
+  authorUser User?          @relation(fields: [authorId], references: [id])
 
   @@index([requestId])
   @@map("execution_comments")
@@ -130,9 +143,131 @@ model SyncRun {
   debitsSkipped         Int           @default(0)
   requestsMarkedDeleted Int           @default(0)
   error                 String?
+  slices                Json? // отчёт синка срезов светофора: { balances: {upserted}|{error}, ... }
+  dispatchesCreated     Int           @default(0)
 
   @@index([status, startedAt])
   @@map("sync_runs")
+}
+
+// --- Светофор авто-проверок (спека 2026-07-14-verdict-traffic-light-design) ---
+// Срезы данных: наполняет синк через per-slice гейтвеи, читают экраны.
+// Пустая таблица = срез недоступен → проверки по нему серые «нет данных».
+
+model AccountBalance {
+  id           String   @id @default(cuid())
+  accountUid   String   @unique // UID банковского счёта 1С
+  orgUid       String?
+  orgName      String
+  accountName  String
+  bankName     String?
+  currency     String
+  balanceMinor BigInt
+  syncedAt     DateTime @db.Timestamptz(3)
+
+  @@index([orgName])
+  @@map("account_balances")
+}
+
+model CurrencyRate {
+  id           String   @id @default(cuid())
+  currencyCode String   @unique // ISO-код: "USD", "CNY"
+  rate         Decimal  @db.Decimal(18, 6) // ₽ за единицу валюты
+  rateDate     DateTime @db.Timestamptz(3)
+  syncedAt     DateTime @db.Timestamptz(3)
+
+  @@map("currency_rates")
+}
+
+model FundSnapshot {
+  id            String   @id @default(cuid())
+  fundUid       String   @unique
+  name          String   @unique // заявка ссылается на фонд по имени (PaymentRequest.fund)
+  planWeekMinor BigInt
+  factWeekMinor BigInt
+  balanceMinor  BigInt
+  syncedAt      DateTime @db.Timestamptz(3)
+
+  @@map("fund_snapshots")
+}
+
+model PartnerStats {
+  id               String    @id @default(cuid())
+  partnerUid       String    @unique
+  firstOperationAt DateTime? @db.Timestamptz(3)
+  lastPaymentAt    DateTime? @db.Timestamptz(3)
+  paymentCount     Int
+  totalPaidMinor   BigInt
+  receivableMinor  BigInt // дебиторка (наш аванс контрагенту)
+  payableMinor     BigInt // кредиторка (наш долг)
+  recentPayments   Json // последние 3–5: [{ date, basis, amountMinor: string }]
+  chatUrl          String?
+  syncedAt         DateTime  @db.Timestamptz(3)
+
+  @@map("partner_stats")
+}
+
+model PartnerContract {
+  id          String   @id @default(cuid())
+  contractUid String   @unique
+  partnerUid  String
+  number      String
+  date        DateTime @db.Timestamptz(3)
+  isActive    Boolean
+  amountMinor BigInt
+  paidMinor   BigInt
+  debtMinor   BigInt // задолженность по договору (ТЗ §10.1)
+  currency    String
+  syncedAt    DateTime @db.Timestamptz(3)
+
+  @@index([partnerUid])
+  @@map("partner_contracts")
+}
+
+model SupplierOrder {
+  id          String   @id @default(cuid())
+  orderUid    String   @unique
+  partnerUid  String
+  contractUid String?
+  number      String
+  date        DateTime @db.Timestamptz(3)
+  amountMinor BigInt
+  paidMinor   BigInt // оплачено ранее по заказу
+  currency    String
+  syncedAt    DateTime @db.Timestamptz(3)
+
+  @@index([partnerUid])
+  @@map("supplier_orders")
+}
+
+model AttachmentMeta {
+  id         String   @id @default(cuid())
+  requestUid String
+  fileName   String
+  fileType   String? // «инвойс», «спецификация», «счёт»
+  createdAt  DateTime @db.Timestamptz(3)
+  syncedAt   DateTime @db.Timestamptz(3)
+
+  @@unique([requestUid, fileName])
+  @@map("attachment_meta")
+}
+
+// Настройки светофора: редактируются на app/settings/verdict.
+// Отсутствующая строка = дефолт из lib/domain/verdict.ts.
+model VerdictThreshold {
+  id    String  @id @default(cuid())
+  key   String  @unique // fundDeficitPercent | oldPartnerMonths | minOperationsForConstant
+  value Decimal @db.Decimal(18, 6)
+
+  @@map("verdict_thresholds")
+}
+
+model VerdictCheckSetting {
+  id               String  @id @default(cuid())
+  checkId          String  @unique // funds | fund_balance | finplan | document | order_contract | partner | preapproved
+  includeInVerdict Boolean
+
+  @@map("verdict_check_settings")
 }
 
 // --- Раздел «Справочники» (спека 2026-07-16-reference-dictionaries-design) ---
@@ -223,4 +358,85 @@ model ReferenceSyncRun {
 
   @@index([status, startedAt])
   @@map("reference_sync_runs")
+}
+
+// --- Авторизация и роли (спека 2026-07-15-auth-roles-design) ---
+
+enum UserRole {
+  owner
+  accountant
+  viewer
+}
+
+model User {
+  id           String   @id @default(cuid())
+  login        String   @unique // хранится в нижнем регистре
+  name         String
+  role         UserRole
+  passwordHash String // scrypt: "salt:hash" (hex)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  sessions            Session[]
+  executionComments   ExecutionComment[]
+  confirmedDispatches PaymentOrderDispatch[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique // SHA-256 токена: дамп БД не даёт живых сессий
+  userId    String
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// --- Отправка платёжек поставщикам (спека заявок §5, §8) ---
+
+enum DispatchStatus {
+  not_ready // не хватает файла и/или чата
+  awaiting_confirmation // всё готово, ждёт подтверждения бухгалтера
+  sent
+  failed
+  skipped
+}
+
+model PaymentOrderDispatch {
+  id            String         @id @default(cuid())
+  requestId     String
+  debitId       String
+  status        DispatchStatus
+  fileName      String? // имя файла платёжки
+  filePath      String? // путь в PAYMENT_ORDERS_DIR
+  chatId        String? // идентификатор чата для Bot API (вводится вручную, §11.4)
+  chatUrl       String? // ссылка на чат из карточки контрагента (справочно)
+  confirmedById String? // кто подтвердил отправку
+  confirmedBy   String? // снапшот имени на момент подтверждения
+  sentAt        DateTime?      @db.Timestamptz(3)
+  error         String? // текст ошибки последней попытки (status=failed)
+  skipReason    String? // причина пропуска (status=skipped)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+
+  request       PaymentRequest @relation(fields: [requestId], references: [id])
+  debit         Debit          @relation(fields: [debitId], references: [id])
+  confirmedUser User?          @relation(fields: [confirmedById], references: [id])
+
+  @@unique([requestId, debitId]) // защита от двойной отправки
+  @@index([status])
+  @@map("payment_order_dispatches")
+}
+
+// Статьи ДДС: список пополняется синком, флаг ставится в настройках.
+model CashFlowItemSetting {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  isGoods Boolean @default(false) // «оплата за товар» → триггер отправки платёжки
+
+  @@map("cash_flow_item_settings")
 }

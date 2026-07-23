@@ -25,6 +25,8 @@ jobs:
       # E2e модуля заявок: демо-DWH и 1С без сети (см. .env.example)
       DWH_MODE: fixture
       ONEC_API_MODE: mock
+      # E2e отправки платёжек: Яндекс Мессенджер в mock-режиме, без сети
+      YM_BOT_MODE: mock
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
