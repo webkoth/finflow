@@ -51,6 +51,19 @@ test("ДДС: помеченная удалённой в 1С не попадае
   ).toHaveCount(0)
 })
 
+test("ДДС: флаг «оплата за товар» переключается", async ({ page }) => {
+  await page.goto("/reference/cashflow-items")
+  await page.getByRole("button", { name: "Обновить из 1С" }).click()
+
+  // Нейтральная конечная статья: её флаг ни на что больше не влияет,
+  // тест возвращает состояние как было (выкл).
+  const row = page.getByRole("row", { name: /Кредиты и займы/ })
+  await row.getByRole("button", { name: "Пометить «за товар»" }).click()
+  await expect(row.getByText("оплата за товар")).toBeVisible()
+  await row.getByRole("button", { name: "Снять флаг" }).click()
+  await expect(row.getByText("оплата за товар")).toHaveCount(0)
+})
+
 test("банковские счета наполняются из 1С", async ({ page }) => {
   await page.goto("/reference/bank-accounts")
   await page.getByRole("button", { name: "Обновить из 1С" }).click()

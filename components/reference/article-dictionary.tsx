@@ -15,9 +15,16 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { FLOW_LABELS } from "./article-labels"
+import { GoodsToggle } from "./goods-toggle"
 
 type Kind = "CASHFLOW" | "PNL"
 type Row = ArticleNode & { isActive: boolean }
+
+// Данные для колонки «Оплата за товар» (только справочник ДДС).
+export type ArticleGoods = {
+  canEdit: boolean
+  byId: Record<string, boolean>
+}
 
 // Классы отступа по глубине (статические — Tailwind их видит; без инлайн-стилей).
 const PAD = ["pl-0", "pl-4", "pl-8", "pl-12", "pl-16", "pl-20"]
@@ -27,11 +34,13 @@ export function ArticleDictionary({
   articles,
   basePath,
   showArchived,
+  goods,
 }: {
   kind: Kind
   articles: Row[]
   basePath: string
   showArchived: boolean
+  goods?: ArticleGoods
 }) {
   const nodes: ArticleNode[] = articles.map((a) => ({
     id: a.id,
@@ -62,6 +71,7 @@ export function ArticleDictionary({
             <TableHead>Наименование</TableHead>
             <TableHead>Код</TableHead>
             <TableHead>Тип</TableHead>
+            {goods && <TableHead>Оплата за товар</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -95,6 +105,17 @@ export function ArticleDictionary({
                     <Badge variant="secondary">{labels[r.flow]}</Badge>
                   ) : null}
                 </TableCell>
+                {goods && (
+                  <TableCell>
+                    {!r.isGroup && active && (
+                      <GoodsToggle
+                        articleId={r.id}
+                        isGoods={goods.byId[r.id] ?? false}
+                        canEdit={goods.canEdit}
+                      />
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             )
           })}
