@@ -143,14 +143,6 @@ async function main() {
   }
   console.log("Seed: настройки светофора")
 
-  // Статья «за товар» для демо и e2e: черновики отправок создаст синк.
-  await prisma.cashFlowItemSetting.upsert({
-    where: { name: "Оплата поставщикам за товар" },
-    update: { isGoods: true },
-    create: { name: "Оплата поставщикам за товар", isGoods: true },
-  })
-  console.log("Seed: статья «Оплата поставщикам за товар» помечена isGoods")
-
   // --- Справочники ---
   // Справочники приходят из 1С. В seed материализуем их тем же конвейером,
   // что и в проде — прогоном синка по фикстуре: так у записей появляются
@@ -160,6 +152,14 @@ async function main() {
   await prisma.referenceSyncRun.deleteMany()
   await runReferenceSync(fixtureOneCGateway, "manual")
   console.log("Seed: справочники наполнены")
+
+  // Флаг «оплата за товар» — локальная настройка поверх справочника из 1С.
+  // Ставим до синка заявок: syncDispatch внутри runSync создаст черновики.
+  await prisma.article.updateMany({
+    where: { kind: "CASHFLOW", name: "Оплата поставщикам за товар" },
+    data: { isGoods: true },
+  })
+  console.log("Seed: статья «Оплата поставщикам за товар» помечена isGoods")
 
   // Демо-заявки — через реальный конвейер синка (fixture-шлюз).
   const sync = await runSync(fixtureDwhGateway, "seed")
