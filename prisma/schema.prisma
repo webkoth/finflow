@@ -380,6 +380,7 @@ model User {
   sessions            Session[]
   executionComments   ExecutionComment[]
   confirmedDispatches PaymentOrderDispatch[]
+  reconResolutions    ReconciliationDiscrepancy[]
 
   @@map("users")
 }
@@ -439,4 +440,128 @@ model CashFlowItemSetting {
   isGoods Boolean @default(false) // «оплата за товар» → триггер отправки платёжки
 
   @@map("cash_flow_item_settings")
+}
+
+// --- Сверка расчётных счётов (спека 2026-07-23-bank-reconciliation-design) ---
+
+enum ReconRunStatus {
+  matched
+  discrepancy
+  no_data
+}
+
+enum ReconAccountStatus {
+  matched
+  discrepancy
+  no_data
+  source_error
+}
+
+enum ReconSourceType {
+  bank_api
+  manual_file
+}
+
+enum ReconSourceStatus {
+  ok
+  error
+}
+
+enum ReconResolution {
+  new
+  reviewed
+  accepted
+}
+
+enum ReconTrigger {
+  cron
+  manual
+}
+
+enum ReconDiscrepancyType {
+  closing_balance
+  debit_turnover
+  credit_turnover
+  balance_identity
+  recipient_mismatch
+  request_not_executed
+  payment_without_request
+  amount_mismatch
+}
+
+// Прогон сверки за день. Append-only: записи не редактируются.
+model ReconciliationRun {
+  id          String         @id @default(cuid())
+  runAt       DateTime       @default(now()) @db.Timestamptz(3)
+  periodStart DateTime       @db.Timestamptz(3)
+  periodEnd   DateTime       @db.Timestamptz(3)
+  status      ReconRunStatus
+  trigger     ReconTrigger
+
+  accountResults ReconciliationAccountResult[]
+  discrepancies  ReconciliationDiscrepancy[]
+
+  @@index([runAt])
+  @@map("reconciliation_runs")
+}
+
+// Итог по одному счёту в прогоне. Суммы — BigInt-копейки.
+model ReconciliationAccountResult {
+  id            String @id @default(cuid())
+  runId         String
+  accountUid    String? // UID банковского счёта 1С
+  bankName      String?
+  accountNumber String
+  currency      String
+
+  stmtOpeningMinor BigInt? // эталон (выписка)
+  stmtClosingMinor BigInt?
+  stmtDebitMinor   BigInt?
+  stmtCreditMinor  BigInt?
+
+  onecClosingMinor BigInt? // 1С
+  onecDebitMinor   BigInt?
+  onecCreditMinor  BigInt?
+
+  status ReconAccountStatus
+
+  sourceType   ReconSourceType
+  sourceStatus ReconSourceStatus
+  sourceError  String?
+
+  statementFileName String?
+  statementSha256   String? // хеш первоисточника — детекция подмены
+
+  run           ReconciliationRun          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  discrepancies ReconciliationDiscrepancy[]
+
+  @@index([runId])
+  @@index([accountNumber])
+  @@map("reconciliation_account_results")
+}
+
+// Одно расхождение. Руками правится только блок разбора (resolution*).
+model ReconciliationDiscrepancy {
+  id              String               @id @default(cuid())
+  runId           String
+  accountResultId String?
+  requestUid      String? // ссылка на заявку (PaymentRequest.uid)
+  type            ReconDiscrepancyType
+  expected        String // значение эталона (строка для показа)
+  actual          String // значение 1С
+  amountMinor     BigInt?
+  detail          String // где именно разошлось, напр. «заявка↔выписка»
+
+  resolutionStatus ReconResolution @default(new)
+  resolvedById     String?
+  resolvedAt       DateTime?       @db.Timestamptz(3)
+  note             String?
+
+  run           ReconciliationRun            @relation(fields: [runId], references: [id], onDelete: Cascade)
+  accountResult ReconciliationAccountResult? @relation(fields: [accountResultId], references: [id], onDelete: Cascade)
+  resolvedBy    User?                        @relation(fields: [resolvedById], references: [id])
+
+  @@index([runId])
+  @@index([resolutionStatus])
+  @@map("reconciliation_discrepancies")
 }
