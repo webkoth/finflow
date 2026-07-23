@@ -1,4 +1,5 @@
 import { formatMoneyBig } from "@/lib/domain/money"
+import { matchRecipient } from "./recipients"
 import type {
   AccountReconInput,
   AccountReconResult,
@@ -23,6 +24,118 @@ function sumLines(
 }
 
 const rub = (v: bigint, currency: string) => formatMoneyBig(v, currency)
+
+// Плоскость 2: заявка → списание (1С) → выписка.
+function checkPayments(input: AccountReconInput): Discrepancy[] {
+  const { movements, requests, statement, currency } = input
+  if (!movements) return []
+  const out: Discrepancy[] = []
+
+  const debitMovements = movements.filter((m) => m.direction === "debit")
+  const byRequestUid = new Map<string, OneCMovement>()
+  for (const m of debitMovements) {
+    if (m.basisRequestUid) byRequestUid.set(m.basisRequestUid, m)
+  }
+
+  // Одобренная заявка со сроком ≤ конец периода без списания.
+  for (const r of requests) {
+    if (!r.approved) continue
+    if (r.payDate > (statement?.periodEnd ?? r.payDate)) continue
+    if (!byRequestUid.has(r.uid)) {
+      out.push({
+        type: "request_not_executed",
+        expected: `исполнение заявки ${r.uid} на ${formatMoneyBig(r.amountMinor, currency)}`,
+        actual: "списания нет",
+        amountMinor: r.amountMinor,
+        detail: `заявка «${r.partnerName}» одобрена, не исполнена`,
+        requestUid: r.uid,
+      })
+    }
+  }
+
+  const requestByUid = new Map(requests.map((r) => [r.uid, r]))
+  for (const m of debitMovements) {
+    // Списание без заявки-основания.
+    if (!m.basisRequestUid) {
+      out.push({
+        type: "payment_without_request",
+        expected: "списание по заявке",
+        actual: `списание «${m.counterpartyName}» на ${formatMoneyBig(m.amountMinor, currency)} без основания`,
+        amountMinor: m.amountMinor,
+        detail: "списание без заявки-основания",
+        requestUid: null,
+      })
+      continue
+    }
+    const r = requestByUid.get(m.basisRequestUid)
+    if (!r) continue // основание есть, но заявки нет в выборке дня — не наш кейс
+
+    // Сумма: превышение — расхождение; недоплата — частичная (не расхождение).
+    if (m.amountMinor > r.amountMinor) {
+      out.push({
+        type: "amount_mismatch",
+        expected: formatMoneyBig(r.amountMinor, currency),
+        actual: formatMoneyBig(m.amountMinor, currency),
+        amountMinor: m.amountMinor - r.amountMinor,
+        detail: `списание больше заявки ${r.uid}`,
+        requestUid: r.uid,
+      })
+    }
+
+    // Получатель: заявка ↔ 1С.
+    const reqVs1c = matchRecipient(
+      { name: r.partnerName, inn: r.partnerInn, account: null },
+      {
+        name: m.counterpartyName,
+        inn: m.counterpartyInn,
+        account: m.counterpartyAccount,
+      }
+    )
+    if (reqVs1c === "mismatch") {
+      out.push({
+        type: "recipient_mismatch",
+        expected: `${r.partnerName} (ИНН ${r.partnerInn ?? "—"})`,
+        actual: `${m.counterpartyName} (ИНН ${m.counterpartyInn ?? "—"})`,
+        amountMinor: m.amountMinor,
+        detail: "получатель: заявка↔1С",
+        requestUid: r.uid,
+      })
+    }
+
+    // Получатель: 1С ↔ выписка (по строке выписки с той же суммой).
+    if (statement) {
+      const line = statement.lines.find(
+        (l) => l.direction === "debit" && l.amountMinor === m.amountMinor
+      )
+      if (line) {
+        const oneCVsStmt = matchRecipient(
+          {
+            name: m.counterpartyName,
+            inn: m.counterpartyInn,
+            account: m.counterpartyAccount,
+          },
+          {
+            name: line.counterpartyName,
+            inn: line.counterpartyInn,
+            account: line.counterpartyAccount,
+          }
+        )
+        if (oneCVsStmt === "mismatch") {
+          out.push({
+            type: "recipient_mismatch",
+            expected: `${m.counterpartyName} (ИНН ${m.counterpartyInn ?? "—"})`,
+            actual: `${line.counterpartyName} (ИНН ${line.counterpartyInn ?? "—"})`,
+            amountMinor: m.amountMinor,
+            detail: "получатель: 1С↔выписка",
+            requestUid: r.uid,
+          })
+        }
+      }
+    }
+  }
+
+  return out
+}
 
 export function reconcileAccount(input: AccountReconInput): AccountReconResult {
   const { statement, movements, onecClosingMinor, currency } = input
@@ -104,6 +217,9 @@ export function reconcileAccount(input: AccountReconInput): AccountReconResult {
       })
     }
   }
+
+  // Плоскость 2 (заявки) — добавляем к расхождениям по счёту.
+  discrepancies.push(...checkPayments(input))
 
   const status = discrepancies.length > 0 ? "discrepancy" : "matched"
   return { ...empty, status, discrepancies }

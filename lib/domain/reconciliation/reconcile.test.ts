@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { reconcileAccount } from "./reconcile"
-import type { AccountReconInput, BankStatement } from "./types"
+import type {
+  AccountReconInput,
+  BankStatement,
+  RequestForCheck,
+} from "./types"
 
 function stmt(over: Partial<BankStatement> = {}): BankStatement {
   return {
@@ -37,7 +41,7 @@ function baseInput(over: Partial<AccountReconInput> = {}): AccountReconInput {
         counterpartyInn: "7701234567",
         counterpartyAccount: "222",
         purpose: "оплата",
-        basisRequestUid: null,
+        basisRequestUid: "req-1", // списание с основанием — базовый «чистый» случай
       },
     ],
     requests: [],
@@ -100,5 +104,113 @@ describe("reconcileAccount — остатки и обороты", () => {
       baseInput({ statement: stmt({ closingMinor: 80000n }) })
     )
     expect(r.discrepancies.map((d) => d.type)).toContain("balance_identity")
+  })
+})
+
+function req(over: Partial<RequestForCheck> = {}): RequestForCheck {
+  return {
+    uid: "req-1",
+    amountMinor: 10000n,
+    partnerName: "ООО Ромашка",
+    partnerInn: "7701234567",
+    payDate: "2026-07-23",
+    approved: true,
+    executedIn1c: true,
+    ...over,
+  }
+}
+
+describe("reconcileAccount — заявки", () => {
+  it("одобренная заявка без списания — request_not_executed", () => {
+    const r = reconcileAccount(
+      baseInput({ movements: [], requests: [req()] })
+    )
+    expect(r.discrepancies.map((d) => d.type)).toContain("request_not_executed")
+  })
+
+  it("списание без заявки-основания — payment_without_request", () => {
+    const r = reconcileAccount(
+      baseInput({
+        movements: [
+          {
+            direction: "debit",
+            amountMinor: 10000n,
+            counterpartyName: "ООО Ромашка",
+            counterpartyInn: "7701234567",
+            counterpartyAccount: "222",
+            purpose: "оплата",
+            basisRequestUid: null,
+          },
+        ],
+        requests: [],
+      })
+    )
+    expect(r.discrepancies.map((d) => d.type)).toContain(
+      "payment_without_request"
+    )
+  })
+
+  it("списали больше заявки — amount_mismatch", () => {
+    const r = reconcileAccount(
+      baseInput({
+        movements: [
+          {
+            direction: "debit",
+            amountMinor: 15000n,
+            counterpartyName: "ООО Ромашка",
+            counterpartyInn: "7701234567",
+            counterpartyAccount: "222",
+            purpose: "оплата",
+            basisRequestUid: "req-1",
+          },
+        ],
+        requests: [req({ amountMinor: 10000n })],
+        onecClosingMinor: 90000n,
+        statement: stmt({ closingMinor: 90000n }),
+      })
+    )
+    expect(r.discrepancies.map((d) => d.type)).toContain("amount_mismatch")
+  })
+
+  it("частичная оплата (списание меньше заявки) — НЕ расхождение", () => {
+    const r = reconcileAccount(
+      baseInput({
+        movements: [
+          {
+            direction: "debit",
+            amountMinor: 6000n,
+            counterpartyName: "ООО Ромашка",
+            counterpartyInn: "7701234567",
+            counterpartyAccount: "222",
+            purpose: "аванс",
+            basisRequestUid: "req-1",
+          },
+        ],
+        requests: [req({ amountMinor: 10000n })],
+      })
+    )
+    expect(r.discrepancies.map((d) => d.type)).not.toContain("amount_mismatch")
+  })
+
+  it("получатель списания ≠ заявке — recipient_mismatch (заявка↔1С)", () => {
+    const r = reconcileAccount(
+      baseInput({
+        movements: [
+          {
+            direction: "debit",
+            amountMinor: 10000n,
+            counterpartyName: "ООО Одуванчик",
+            counterpartyInn: "7709999999",
+            counterpartyAccount: "333",
+            purpose: "оплата",
+            basisRequestUid: "req-1",
+          },
+        ],
+        requests: [req({ partnerInn: "7701234567" })],
+      })
+    )
+    const mism = r.discrepancies.filter((d) => d.type === "recipient_mismatch")
+    expect(mism.length).toBeGreaterThan(0)
+    expect(mism[0].detail).toContain("заявка↔1С")
   })
 })
