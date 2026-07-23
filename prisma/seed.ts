@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client"
 import { hashPassword } from "../lib/auth/passwords"
 import { fixtureDwhGateway } from "../lib/integrations/dwh-fixture"
+import { fixtureOneCGateway } from "../lib/integrations/one-c-odata-fixture"
+import { runReferenceSync } from "../lib/sync/run-reference-sync"
 import { runSync } from "../lib/sync/run-sync"
 
 const prisma = new PrismaClient()
@@ -150,107 +152,13 @@ async function main() {
   console.log("Seed: статья «Оплата поставщикам за товар» помечена isGoods")
 
   // --- Справочники ---
+  // Справочники приходят из 1С. В seed материализуем их тем же конвейером,
+  // что и в проде — прогоном синка по фикстуре: так у записей появляются
+  // стабильные externalUid и реальный синк опознаёт их как те же самые.
   await prisma.article.deleteMany()
   await prisma.bankAccount.deleteMany()
-
-  const opGroup = await prisma.article.create({
-    data: {
-      kind: "CASHFLOW",
-      name: "Операционная деятельность",
-      code: "1",
-      isGroup: true,
-    },
-  })
-  await prisma.article.createMany({
-    data: [
-      {
-        kind: "CASHFLOW",
-        name: "Поступления от покупателей",
-        code: "1.1",
-        flow: "INFLOW",
-        parentId: opGroup.id,
-      },
-      {
-        kind: "CASHFLOW",
-        name: "Оплата поставщикам",
-        code: "1.2",
-        flow: "OUTFLOW",
-        parentId: opGroup.id,
-      },
-    ],
-  })
-  const finGroup = await prisma.article.create({
-    data: {
-      kind: "CASHFLOW",
-      name: "Финансовая деятельность",
-      code: "2",
-      isGroup: true,
-    },
-  })
-  await prisma.article.create({
-    data: {
-      kind: "CASHFLOW",
-      name: "Кредиты и займы",
-      code: "2.1",
-      flow: "INFLOW",
-      parentId: finGroup.id,
-    },
-  })
-
-  const incGroup = await prisma.article.create({
-    data: { kind: "PNL", name: "Доходы", code: "1", isGroup: true },
-  })
-  await prisma.article.create({
-    data: {
-      kind: "PNL",
-      name: "Выручка",
-      code: "1.1",
-      flow: "INFLOW",
-      parentId: incGroup.id,
-    },
-  })
-  const expGroup = await prisma.article.create({
-    data: { kind: "PNL", name: "Расходы", code: "2", isGroup: true },
-  })
-  await prisma.article.createMany({
-    data: [
-      {
-        kind: "PNL",
-        name: "Зарплата",
-        code: "2.1",
-        flow: "OUTFLOW",
-        parentId: expGroup.id,
-      },
-      {
-        kind: "PNL",
-        name: "Аренда",
-        code: "2.2",
-        flow: "OUTFLOW",
-        parentId: expGroup.id,
-      },
-    ],
-  })
-
-  await prisma.bankAccount.createMany({
-    data: [
-      {
-        name: "Расчётный (Сбербанк)",
-        accountNumber: "40702810900000001234",
-        bankName: "ПАО Сбербанк",
-        bankBic: "044525225",
-        currency: "RUB",
-        organization: "ООО «Ромашка»",
-      },
-      {
-        name: "Расчётный (Т-Банк)",
-        accountNumber: "40702810400000005678",
-        bankName: "АО «Т-Банк»",
-        bankBic: "044525974",
-        currency: "RUB",
-        organization: "ООО «Василёк»",
-      },
-    ],
-  })
+  await prisma.referenceSyncRun.deleteMany()
+  await runReferenceSync(fixtureOneCGateway, "manual")
   console.log("Seed: справочники наполнены")
 
   // Демо-заявки — через реальный конвейер синка (fixture-шлюз).

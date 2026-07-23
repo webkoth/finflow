@@ -1,9 +1,6 @@
 import Link from "next/link"
-import { requirePageUser } from "@/lib/auth/session"
 import { prisma } from "@/lib/db"
-import { can, type Role } from "@/lib/domain/permissions"
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -12,8 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { BankAccountForm } from "./bank-account-form"
-import { setBankAccountActive } from "./actions"
+import { SyncStatus } from "@/components/reference/sync-status"
 
 export const dynamic = "force-dynamic"
 const BASE = "/reference/bank-accounts"
@@ -21,11 +17,8 @@ const BASE = "/reference/bank-accounts"
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ archived?: string; edit?: string }>
+  searchParams: Promise<{ archived?: string }>
 }) {
-  const user = await requirePageUser()
-  const canManage = can(user.role as Role, "manage_reference")
-
   const sp = await searchParams
   const showArchived = sp.archived === "1"
   const accounts = await prisma.bankAccount.findMany({
@@ -33,36 +26,10 @@ export default async function Page({
     orderBy: { createdAt: "asc" },
   })
 
-  let editing = undefined as (typeof accounts)[number] | undefined
-  if (sp.edit) {
-    editing =
-      accounts.find((a) => a.id === sp.edit) ??
-      (await prisma.bankAccount.findUnique({ where: { id: sp.edit } })) ??
-      undefined
-  }
-
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-8">
       <h1 className="text-2xl font-semibold">Банковские счета</h1>
-
-      {canManage && (
-        <BankAccountForm
-          editing={
-            editing
-              ? {
-                  id: editing.id,
-                  name: editing.name,
-                  accountNumber: editing.accountNumber,
-                  bankName: editing.bankName,
-                  bankBic: editing.bankBic,
-                  currency: editing.currency,
-                  organization: editing.organization,
-                }
-              : undefined
-          }
-          cancelHref={BASE + (showArchived ? "?archived=1" : "")}
-        />
-      )}
+      <SyncStatus />
 
       <div className="flex justify-end">
         <Link
@@ -82,9 +49,6 @@ export default async function Page({
             <TableHead>БИК</TableHead>
             <TableHead>Валюта</TableHead>
             <TableHead>Организация</TableHead>
-            {canManage && (
-              <TableHead className="text-right">Действия</TableHead>
-            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -103,38 +67,6 @@ export default async function Page({
               <TableCell>{a.bankBic}</TableCell>
               <TableCell>{a.currency}</TableCell>
               <TableCell>{a.organization}</TableCell>
-              {canManage && (
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Link
-                      href={`${BASE}?edit=${a.id}${showArchived ? "&archived=1" : ""}`}
-                      className={buttonVariants({
-                        variant: "ghost",
-                        size: "sm",
-                      })}
-                    >
-                      Изменить
-                    </Link>
-                    <form action={setBankAccountActive}>
-                      <input type="hidden" name="id" value={a.id} />
-                      <input
-                        type="hidden"
-                        name="active"
-                        value={a.isActive ? "" : "1"}
-                      />
-                      <button
-                        type="submit"
-                        className={buttonVariants({
-                          variant: "ghost",
-                          size: "sm",
-                        })}
-                      >
-                        {a.isActive ? "В архив" : "Вернуть"}
-                      </button>
-                    </form>
-                  </div>
-                </TableCell>
-              )}
             </TableRow>
           ))}
         </TableBody>

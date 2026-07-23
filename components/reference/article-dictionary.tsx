@@ -5,7 +5,6 @@ import {
   type ArticleNode,
 } from "@/lib/domain/reference/articles"
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -15,15 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import {
-  ArticleForm,
-  type EditingArticle,
-  type GroupOption,
-} from "./article-form"
 import { FLOW_LABELS } from "./article-labels"
 
 type Kind = "CASHFLOW" | "PNL"
-type FormState = { error: string | null }
 type Row = ArticleNode & { isActive: boolean }
 
 // Классы отступа по глубине (статические — Tailwind их видит; без инлайн-стилей).
@@ -34,21 +27,11 @@ export function ArticleDictionary({
   articles,
   basePath,
   showArchived,
-  editing,
-  createAction,
-  updateAction,
-  setActiveAction,
-  canManage,
 }: {
   kind: Kind
   articles: Row[]
   basePath: string
   showArchived: boolean
-  editing?: EditingArticle
-  createAction: (p: FormState, fd: FormData) => Promise<FormState>
-  updateAction: (p: FormState, fd: FormData) => Promise<FormState>
-  setActiveAction: (fd: FormData) => Promise<void>
-  canManage: boolean
 }) {
   const nodes: ArticleNode[] = articles.map((a) => ({
     id: a.id,
@@ -60,23 +43,10 @@ export function ArticleDictionary({
   }))
   const rows = flattenArticleTree(buildArticleTree(nodes))
   const activeById = new Map(articles.map((a) => [a.id, a.isActive]))
-  const groups: GroupOption[] = flattenArticleTree(
-    buildArticleTree(nodes.filter((node) => node.isGroup))
-  ).map((g) => ({ id: g.id, name: g.name, depth: g.depth }))
   const labels = FLOW_LABELS[kind]
 
   return (
     <div className="space-y-6">
-      {canManage && (
-        <ArticleForm
-          kind={kind}
-          action={editing ? updateAction : createAction}
-          groups={groups}
-          editing={editing}
-          cancelHref={basePath + (showArchived ? "?archived=1" : "")}
-        />
-      )}
-
       <div className="flex justify-end">
         <Link
           href={basePath + (showArchived ? "" : "?archived=1")}
@@ -92,9 +62,6 @@ export function ArticleDictionary({
             <TableHead>Наименование</TableHead>
             <TableHead>Код</TableHead>
             <TableHead>Тип</TableHead>
-            {canManage && (
-              <TableHead className="text-right">Действия</TableHead>
-            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -128,32 +95,6 @@ export function ArticleDictionary({
                     <Badge variant="secondary">{labels[r.flow]}</Badge>
                   ) : null}
                 </TableCell>
-                {canManage && (
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`${basePath}?edit=${r.id}${showArchived ? "&archived=1" : ""}`}
-                        className={buttonVariants({
-                          variant: "ghost",
-                          size: "sm",
-                        })}
-                      >
-                        Изменить
-                      </Link>
-                      <form action={setActiveAction}>
-                        <input type="hidden" name="id" value={r.id} />
-                        <input
-                          type="hidden"
-                          name="active"
-                          value={active ? "" : "1"}
-                        />
-                        <Button variant="ghost" size="sm" type="submit">
-                          {active ? "В архив" : "Вернуть"}
-                        </Button>
-                      </form>
-                    </div>
-                  </TableCell>
-                )}
               </TableRow>
             )
           })}

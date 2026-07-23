@@ -299,6 +299,11 @@ model Article {
   isActive    Boolean      @default(true)
   createdAt   DateTime     @default(now()) @db.Timestamptz(3)
 
+  // Синк из 1С (спека 2026-07-21-onec-reference-sync-design)
+  externalUid   String?   @unique // UID записи в 1С; пусто у записей не из 1С
+  syncedAt      DateTime? @db.Timestamptz(3)
+  isDeletedIn1c Boolean   @default(false)
+
   @@index([kind, parentId])
   @@map("articles")
 }
@@ -315,7 +320,44 @@ model BankAccount {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now()) @db.Timestamptz(3)
 
+  // Синк из 1С (спека 2026-07-21-onec-reference-sync-design)
+  externalUid   String?   @unique
+  syncedAt      DateTime? @db.Timestamptz(3)
+  isDeletedIn1c Boolean   @default(false)
+
   @@map("bank_accounts")
+}
+
+// --- Синк справочников из 1С (спека 2026-07-21-onec-reference-sync-design) ---
+
+enum ReferenceSyncStatus {
+  running
+  ok
+  error
+}
+
+enum ReferenceSyncTrigger {
+  cron
+  manual
+}
+
+// Журнал запусков синка справочников. Отдельно от SyncRun (заявки на оплату):
+// у них разные счётчики, общая таблица держала бы половину колонок пустыми.
+model ReferenceSyncRun {
+  id         String               @id @default(cuid())
+  startedAt  DateTime             @default(now()) @db.Timestamptz(3)
+  finishedAt DateTime?            @db.Timestamptz(3)
+  status     ReferenceSyncStatus
+  trigger    ReferenceSyncTrigger
+  created    Int                  @default(0)
+  updated    Int                  @default(0)
+  archived   Int                  @default(0)
+  unchanged  Int                  @default(0)
+  warnings   Int                  @default(0) // напр. нераспознанный тип статьи
+  error      String?
+
+  @@index([status, startedAt])
+  @@map("reference_sync_runs")
 }
 
 // --- Авторизация и роли (спека 2026-07-15-auth-roles-design) ---
