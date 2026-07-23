@@ -1,4 +1,12 @@
 import { expect, test } from "@playwright/test"
+import { loginAs } from "./helpers"
+
+// Разделы требуют авторизации (спека auth-roles). Входим владельцем —
+// у него максимум прав, поэтому «редактирование недоступно» проверяется
+// в самом строгом случае: форм нет даже у того, кто иначе имел бы manage_reference.
+test.beforeEach(async ({ page }) => {
+  await loginAs(page, "owner")
+})
 
 // Данные готовит сам тест: кнопка «Обновить из 1С» прогоняет синк
 // fixture-шлюза (ONEC_ODATA_MODE=fixture в .env), от seed тест не зависит.
