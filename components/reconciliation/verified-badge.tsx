@@ -2,10 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { CircleAlert, CircleCheck, CircleHelp, CircleX } from "lucide-react"
 
 export type VerifiedState =
-  | "matched"
-  | "discrepancy"
-  | "source_error"
-  | "no_data"
+  "matched" | "discrepancy" | "source_error" | "no_data"
 
 export function VerifiedBadge({
   state,

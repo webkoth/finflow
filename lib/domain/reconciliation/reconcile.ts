@@ -221,6 +221,11 @@ export function reconcileAccount(input: AccountReconInput): AccountReconResult {
   // Плоскость 2 (заявки) — добавляем к расхождениям по счёту.
   discrepancies.push(...checkPayments(input))
 
-  const status = discrepancies.length > 0 ? "discrepancy" : "matched"
+  // «Проверено» (matched) ставим только при наличии независимой выписки-эталона:
+  // без неё сверять нечего — статус no_data (зелёного быть не может).
+  let status: AccountReconResult["status"]
+  if (discrepancies.length > 0) status = "discrepancy"
+  else if (!statement) status = "no_data"
+  else status = "matched"
   return { ...empty, status, discrepancies }
 }

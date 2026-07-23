@@ -69,6 +69,35 @@ describe("reconcileAccount — остатки и обороты", () => {
     expect(r.status).toBe("no_data")
   })
 
+  it("нет выписки, но пустой массив движений — no_data (не matched)", () => {
+    const r = reconcileAccount(
+      baseInput({ statement: null, movements: [], onecClosingMinor: null })
+    )
+    expect(r.status).toBe("no_data")
+  })
+
+  it("нет выписки, движения чистые — всё равно no_data, не «Проверено»", () => {
+    const r = reconcileAccount(
+      baseInput({
+        statement: null,
+        onecClosingMinor: null,
+        movements: [
+          {
+            direction: "debit",
+            amountMinor: 10000n,
+            counterpartyName: "ООО Ромашка",
+            counterpartyInn: "7701234567",
+            counterpartyAccount: "222",
+            purpose: "оплата",
+            basisRequestUid: "req-1",
+          },
+        ],
+        requests: [],
+      })
+    )
+    expect(r.status).toBe("no_data")
+  })
+
   it("конечный остаток 1С ≠ выписке — closing_balance", () => {
     const r = reconcileAccount(baseInput({ onecClosingMinor: 91000n }))
     expect(r.status).toBe("discrepancy")

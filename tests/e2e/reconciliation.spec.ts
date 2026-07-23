@@ -35,7 +35,5 @@ test("сверка: колонка сверки на справочнике сч
   await expect(
     page.getByRole("heading", { name: "Банковские счета" })
   ).toBeVisible()
-  await expect(
-    page.getByRole("columnheader", { name: "Сверка" })
-  ).toBeVisible()
+  await expect(page.getByRole("columnheader", { name: "Сверка" })).toBeVisible()
 })

@@ -40,7 +40,11 @@ const NAV_CONFIG: { label: string; items: NavItemConfig[] }[] = [
       { title: "Транзакции", href: "/transactions", icon: "transactions" },
       { title: "Заявки на оплату", href: "/requests", icon: "requests" },
       { title: "Отправка платёжек", href: "/dispatch", icon: "dispatch" },
-      { title: "Сверка счётов", href: "/reconciliation", icon: "reconciliation" },
+      {
+        title: "Сверка счётов",
+        href: "/reconciliation",
+        icon: "reconciliation",
+      },
     ],
   },
   {
