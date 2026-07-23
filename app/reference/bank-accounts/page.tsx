@@ -10,6 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { SyncStatus } from "@/components/reference/sync-status"
+import { VerifiedBadge } from "@/components/reconciliation/verified-badge"
+import { latestAccountStatuses } from "@/lib/reconciliation-status"
+import { formatDate } from "@/lib/domain/dates"
 
 export const dynamic = "force-dynamic"
 const BASE = "/reference/bank-accounts"
@@ -25,6 +28,7 @@ export default async function Page({
     where: showArchived ? {} : { isActive: true },
     orderBy: { createdAt: "asc" },
   })
+  const statuses = await latestAccountStatuses()
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 p-8">
@@ -49,6 +53,7 @@ export default async function Page({
             <TableHead>БИК</TableHead>
             <TableHead>Валюта</TableHead>
             <TableHead>Организация</TableHead>
+            <TableHead>Сверка</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -67,6 +72,18 @@ export default async function Page({
               <TableCell>{a.bankBic}</TableCell>
               <TableCell>{a.currency}</TableCell>
               <TableCell>{a.organization}</TableCell>
+              <TableCell>
+                {(() => {
+                  const s = statuses.get(a.accountNumber)
+                  return (
+                    <VerifiedBadge
+                      state={s?.state ?? "no_data"}
+                      date={s ? formatDate(s.runAt) : undefined}
+                      count={s?.discrepancies}
+                    />
+                  )
+                })()}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

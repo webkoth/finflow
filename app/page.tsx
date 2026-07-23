@@ -5,6 +5,8 @@ import { convertToRubMinor, summarizeBalances } from "@/lib/domain/balances"
 import { startOfMoscowDay } from "@/lib/domain/dates"
 import { formatMoneyBig } from "@/lib/domain/money"
 import { groupDailyCashflow } from "@/lib/domain/transactions"
+import { VerifiedBadge } from "@/components/reconciliation/verified-badge"
+import { latestAccountStatuses } from "@/lib/reconciliation-status"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -57,6 +59,10 @@ export default async function DashboardPage() {
 
   const rates = new Map(rateRows.map((r) => [r.currencyCode, Number(r.rate)]))
   const balances = summarizeBalances(accounts, rates)
+  const reconStatuses = await latestAccountStatuses()
+  const reconAllMatched =
+    reconStatuses.size > 0 &&
+    [...reconStatuses.values()].every((s) => s.state === "matched")
   const executionCount = (status: string) =>
     executionGroups.find((g) => g.executionStatus === status)?._count ?? 0
   const dispatchCount = (status: string) =>
@@ -157,7 +163,14 @@ export default async function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Остатки по счетам</CardTitle>
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-sm">Остатки по счетам</CardTitle>
+            {reconStatuses.size > 0 && (
+              <VerifiedBadge
+                state={reconAllMatched ? "matched" : "discrepancy"}
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {accounts.length === 0 ? (
