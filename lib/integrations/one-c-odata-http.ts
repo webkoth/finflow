@@ -28,8 +28,11 @@ const NAMES = {
     name: "Description",
     parent: "Parent_Key",
     isGroup: "IsFolder",
+    // Вида движения в конфигурации rbb_cut нет ни у ДДС, ни у БДР
+    // (проверено 2026-07-23) — поле отсутствует, парсер вернёт null.
     flow: "ВидДвижения",
-    description: "Комментарий",
+    // Текст статьи лежит в реквизите «Описание» (не «Комментарий»).
+    description: "Описание",
     deleted: "DeletionMark",
   },
   accounts: "Catalog_БанковскиеСчета",
@@ -37,12 +40,14 @@ const NAMES = {
     uid: "Ref_Key",
     name: "Description",
     number: "НомерСчета",
-    bankName: "Банк/Description",
-    bankBic: "Банк/Код",
-    currency: "ВалютаДенежныхСредств/Code",
-    organization: "Владелец/Description",
+    // Составной владелец: guid лежит в Owner (не Owner_Key), тип — в Owner_Type.
+    ownerKey: "Owner",
+    // «Недействителен» — закрытый счёт: в приложении не нужен,
+    // прячем тем же механизмом, что и помеченные на удаление.
+    invalid: "Недействителен",
     deleted: "DeletionMark",
   },
+  organizations: "Catalog_Организации",
   // Наборы движений по счёту (проверено запросом 2026-07-23, база rbb_cut).
   movements: {
     expense: "Document_РасходСоСчета",
@@ -90,12 +95,14 @@ function config() {
   return { base: base.replace(/\/$/, ""), auth }
 }
 
-// Читает набор целиком, страницами по PAGE_SIZE.
-async function fetchAll(set: string): Promise<Row[]> {
+// Читает набор целиком, страницами по PAGE_SIZE. extraQuery — уже
+// URL-кодированные доп. параметры ($filter, $expand и т.п.).
+async function fetchAll(set: string, extraQuery?: string): Promise<Row[]> {
   const { base, auth } = config()
   const rows: Row[] = []
   for (let skip = 0; ; skip += PAGE_SIZE) {
-    const url = `${base}/${set}?$format=json&$top=${PAGE_SIZE}&$skip=${skip}`
+    const extra = extraQuery ? `&${extraQuery}` : ""
+    const url = `${base}/${set}?$format=json&$top=${PAGE_SIZE}&$skip=${skip}${extra}`
     const res = await fetch(url, {
       headers: { Authorization: auth, Accept: "application/json" },
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -137,16 +144,36 @@ export const httpOneCGateway: OneCGateway = {
   async fetchBankAccounts(): Promise<OneCBankAccount[]> {
     const set = NAMES.accounts
     const f = NAMES.accountFields
-    const rows = await fetchAll(set)
+    // Каталог хранит счета и организаций, и контрагентов (2000+) — берём
+    // только счета своих организаций. Банк и валюта — навигационные
+    // свойства, без $expand не возвращаются. Имя владельца — отдельным
+    // запросом к справочнику организаций: $expand составного Owner в 1С
+    // не работает (проверено 2026-07-23).
+    const filter = `$filter=${encodeURIComponent(
+      "Owner_Type eq 'StandardODATA.Catalog_Организации'"
+    )}`
+    const expand = `$expand=${encodeURIComponent("Банк,ВалютаДенежныхСредств")}`
+    const [rows, orgRows] = await Promise.all([
+      fetchAll(set, `${filter}&${expand}`),
+      fetchAll(NAMES.organizations),
+    ])
+    const orgNameByUid = new Map<string, string>()
+    for (const o of orgRows) {
+      const uid = str(o, "Ref_Key")
+      if (uid) orgNameByUid.set(uid, str(o, "Description") ?? "")
+    }
     return rows.map((row) => ({
       uid: required(row, f.uid, set),
       name: required(row, f.name, set),
       accountNumber: str(row, f.number) ?? "",
-      bankName: str(row, f.bankName) ?? "",
-      bankBic: str(row, f.bankBic) ?? "",
-      currency: str(row, f.currency) ?? "RUB",
-      organization: str(row, f.organization) ?? "",
-      isDeletedIn1c: row[f.deleted] === true,
+      bankName: nestedStr(row, "Банк", "Description") ?? "",
+      // БИК банка РФ в классификаторе 1С лежит в Code.
+      bankBic: nestedStr(row, "Банк", "Code") ?? "",
+      currency: parseCurrencyName(
+        nestedStr(row, "ВалютаДенежныхСредств", "Description")
+      ),
+      organization: orgNameByUid.get(str(row, f.ownerKey) ?? "") ?? "",
+      isDeletedIn1c: row[f.deleted] === true || row[f.invalid] === true,
     }))
   },
 
@@ -199,6 +226,13 @@ async function fetchFiltered(query: string): Promise<Row[]> {
   }
   const json = (await res.json()) as { value?: Row[] }
   return json.value ?? []
+}
+
+// Валюта в 1С: рубль называется «руб.», остальные — ISO-кодом (USD, CNY…).
+function parseCurrencyName(raw: string | null): string {
+  if (!raw) return "RUB"
+  const v = raw.trim()
+  return v === "руб." || v.toLowerCase() === "руб" ? "RUB" : v
 }
 
 // Сумма из 1С приходит в рублях (число/строка) → BigInt-копейки.
