@@ -116,20 +116,22 @@ export async function runReferenceSync(
       gateway.fetchBankAccounts(),
     ])
 
-    // Нераспознанный вид движения у конечной статьи ДДС — предупреждение,
-    // не сбой. У статей БДР вида движения нет вовсе (решение 2026-07-22) —
-    // для них это не предупреждение.
-    for (const a of cashflow) {
-      if (!a.isGroup && a.flow === null && !a.isDeletedIn1c) totals.warnings++
-    }
+    // Вид движения в конфигурации rbb_cut не ведётся ни у ДДС, ни у БДР
+    // (проверено живыми запросами 2026-07-23): flow = null — норма, не
+    // предупреждение. Счётчик warnings остаётся в журнале на будущее.
 
     const syncedAt = new Date()
 
-    await prisma.$transaction(async (tx) => {
-      await applyArticles(tx, "CASHFLOW", cashflow, syncedAt, totals)
-      await applyArticles(tx, "PNL", pnl, syncedAt, totals)
-      await applyAccounts(tx, accounts, syncedAt, totals)
-    })
+    // Таймаут: реальный объём (~950 записей: 203 статьи ДДС, счета и т.д.)
+    // не укладывается в дефолтные 5 секунд интерактивной транзакции.
+    await prisma.$transaction(
+      async (tx) => {
+        await applyArticles(tx, "CASHFLOW", cashflow, syncedAt, totals)
+        await applyArticles(tx, "PNL", pnl, syncedAt, totals)
+        await applyAccounts(tx, accounts, syncedAt, totals)
+      },
+      { timeout: 120_000, maxWait: 10_000 }
+    )
 
     await prisma.referenceSyncRun.update({
       where: { id: run.id },
